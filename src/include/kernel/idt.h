@@ -1,7 +1,7 @@
 #ifndef HVOS_IDT_H
 #define HVOS_IDT_H
 #include <stdint.h>
-#include "kernel/asm.h"
+#include "asm/asm.h"
 #include "klibc/printf.h"
 #include "kernel/reg.h"
 #include "mem/lowmem.h"

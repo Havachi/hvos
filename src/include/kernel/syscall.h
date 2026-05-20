@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "klibc/printf.h"
-#include "kernel/asm.h"
+#include "asm/asm.h"
 #include "kernel/vfs.h"
 #include "kernel/mt.h"
 #include "kernel/syscall_id.h"

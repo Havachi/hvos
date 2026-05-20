@@ -1,4 +1,5 @@
 #include "kernel/mem.h"
+#include "klibc/string.h"
 
 void heap_init(volatile pt_entry *pml4) {
 	current_pml4 = pml4;

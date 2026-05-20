@@ -1,4 +1,8 @@
 #include "kernel/elf.h"
+#include "kernel/vfs.h"
+#include "kernel/mem.h"
+#include "kernel/mt.h"
+#include "klibc/printf.h"
 
 extern volatile pt_entry *current_pml4;
 
@@ -40,7 +44,6 @@ int elf_load_and_run(const char* path){
 					page_offset_in_segment = v - start_vaddr;
 				}
 
-				uint64_t virtual_page_content_start = start_vaddr + page_offset_in_segment;
 				int64_t bytes_to_copy = pheader[i].p_filesz - page_offset_in_segment;
 				if (bytes_to_copy > (int64_t) PAGE_SIZE){
 					bytes_to_copy = PAGE_SIZE;

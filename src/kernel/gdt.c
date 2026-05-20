@@ -1,7 +1,11 @@
 #include "kernel/gdt.h"
+#include "kernel/tss.h"
 #include "asm/segment.h"
 #include "asm/desc.h"
 #include "asm/asm.h"
+#include "klibc/string.h"
+#include "asm/asm.h"
+
 gdtr_t gdt = {0};
 gdt_ptr_t gdt_ptr = {0};
 tss_t global_tss = {0};
@@ -35,7 +39,7 @@ static void set_gdt_tss_gate (uint64_t base) {
 	gdt.tss_high = high;
 }
 
-void oldinit_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
+void init_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
 
 	//[0x0] NULL SEGM
 
@@ -60,7 +64,7 @@ void oldinit_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
 	reload_tss();
 }
 
-void init_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
+void newinit_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
 	struct gdt_page *gp = rip_rel_ptr((void *)(__force uint64_t)&gdt_page);
 	void *handler = NULL;
 

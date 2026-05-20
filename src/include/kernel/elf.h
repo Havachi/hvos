@@ -2,11 +2,7 @@
 #define HVOS_ELF_h
 
 #include <stdint.h>
-#include "kernel/vfs.h"
-#include "kernel/mem.h"
-#include "kernel/mt.h"
-#include "klibc/printf.h"
-#include "klibc/string.h"
+
 
 #define ELF_MAGIC 0x464C457F
 

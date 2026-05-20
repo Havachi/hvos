@@ -3,9 +3,10 @@
 
 #include "asm/segment.h"
 #include "asm/desc_defs.h"
-#include "kernel/gdt.h"
 #include "kernel/idt.h"
 #include "hvos/compiler_attributes.h"
+#include "kernel/mem.h"
+
 #define __force
 typedef struct gdt_page {
 	seg_descr_t gdt[GDT_ENTRIES];

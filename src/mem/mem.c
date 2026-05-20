@@ -1,5 +1,7 @@
 #include "kernel/mem.h"
 #include <string.h>
+#include "klibc/printf.h"
+#include "klibc/string.h"
 
 // Globals linked via extern from kernel/mem.h
 uint8_t *bitmap;
@@ -43,7 +45,7 @@ void display_memmap_debug(uint64_t nb_entries, struct limine_memmap_entry **entr
     }
 }
 
-void vmm_map(pt_entry* pml4, uint64_t virt, uint64_t phys, uint64_t flags) {
+void vmm_map(volatile pt_entry* pml4, uint64_t virt, uint64_t phys, uint64_t flags) {
     uint64_t pml4_idx = (virt >> 39) & 0x1FF;
     uint64_t pdpt_idx = (virt >> 30) & 0x1FF;
     uint64_t pd_idx   = (virt >> 21) & 0x1FF;

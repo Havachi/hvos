@@ -2,9 +2,9 @@
 #define HVOS_MEM_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "limine.h"
-#include "klibc/printf.h"
-#include "klibc/string.h"
+
 
 #define PAGE_SIZE		4096
 #define PTE_PRESENT		(1ULL << 0)
@@ -58,7 +58,7 @@ void pmm_free(void* addr);
 
 void display_memmap_debug (uint64_t nb_entries, struct limine_memmap_entry **entries);
 void init_mem(struct limine_memmap_response* memmap, uint64_t _hhdm_offset);
-void vmm_map(pt_entry* pml4, uint64_t virt, uint64_t phys, uint64_t flags);
+void vmm_map(volatile pt_entry* pml4, uint64_t virt, uint64_t phys, uint64_t flags);
 uint64_t vmm_create_address_space(void);
 
 #endif

@@ -1,8 +1,8 @@
 #ifndef HVOS_MT_H
 #define HVOS_MT_H
 
+#include "kernel/mem.h"
 #include <stdint.h>
-#include "kernel/acpi.h"
 
 #define TASK_STATE_RUNNING	0
 #define TASK_STATE_WAITING	1
@@ -21,7 +21,6 @@ typedef struct {
 typedef struct {
     uint64_t rax, rbx, rcx, rdx, rsi, rdi, rbp;
     uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
-    
     uint64_t rip;
     uint64_t cs;
     uint64_t rflags;

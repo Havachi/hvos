@@ -1,4 +1,10 @@
 #include "kernel/acpi.h"
+#include "kernel/boot.h"
+#include "kernel/mem.h"
+#include "kernel/local_apic.h"
+#include "kernel/io_apic.h"
+#include "kernel/print.h"
+
 #ifdef PRINTV
 #undef 	PRINTV
 #endif

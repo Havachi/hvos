@@ -1,19 +1,22 @@
 #include "drivers/keyboard.h"
-uint8_t kdb_queue_occupancy = 0;
+#include "drivers/scancode.h"
+#include "klibc/printf.h"
+#include "cpu/io.h"
+
+uint32_t kdb_queue_occupancy = 0;
 static char kdb_queue[KDB_BUFFER_SIZE];
 uint32_t kdb_head = 0;
 uint32_t kdb_tail = 0;
 
 extern void unblock_tasks(uint32_t);
 
-static safe_lock_t kbd_lock = {.locked=0};
 extern uintptr_t lapic_virt_base;
 bool key_pressed[128];
 bool lshift_pressed;
 bool rshift_pressed;
 
 static uint8_t read_scancode() {
-	return inb(KEYBOARD_DATA_PORT);
+	return io_read_8(KEYBOARD_DATA_PORT);
 }
 
 void append_to_input_buffer(char c) {

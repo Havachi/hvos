@@ -2,9 +2,7 @@
 #define HVOS_GDT_H
 
 #include <stdint.h>
-#include "klibc/string.h"
-#include "kernel/asm.h"
-#include "kernel/tss.h"
+
 
 typedef struct gdt_entry_s {
 	uint16_t limit_low;
@@ -38,8 +36,6 @@ typedef struct gdtr_s
 	uint64_t tss_low;
 	uint64_t tss_high;
 } __attribute__((packed)) gdtr_t;
-
-
 
 
 

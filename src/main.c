@@ -1,11 +1,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <kernel/boot.h>
-#include <kernel/video.h>
+#include "kernel/boot.h"
+#include "kernel/video.h"
 #include "kernel/elf.h"
 #include "kernel/mt.h"
-#include <klibc/printf.h>
+#include "klibc/printf.h"
 
 struct limine_framebuffer *fb = NULL;
 extern void kernel_initialize(void);
@@ -16,7 +16,6 @@ extern uint32_t g_acpi_cpu_count;
 void print_available_ram(uint64_t total_bytes) {
     uint64_t mib = total_bytes / (1024 * 1024);
     uint64_t gib = mib / 1024;
-    uint64_t remainder_mib = mib % 1024;
 
     if (gib > 0) {
         // Formats as e.g., "Available RAM: 4 GB, 256 MB"
@@ -28,7 +27,7 @@ void print_available_ram(uint64_t total_bytes) {
 
 void kmain(void) {
 
-	fb = framebuffer_request.response->framebuffers[0];;
+	fb = framebuffer_request.response->framebuffers[0];
 	kernel_initialize();
     clear_screen();
 	print("Welcome to HVOS v0.1\n");

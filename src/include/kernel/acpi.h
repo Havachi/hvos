@@ -2,14 +2,7 @@
 #define HVOS_APIC_H
 
 #include <stdint.h>
-#include "kernel/asm.h"
-#include "kernel/boot.h"
-#include "kernel/mem.h"
-#include "kernel/reg.h"
-#include "kernel/local_apic.h"
-#include "kernel/io_apic.h"
-#include "kernel/print.h"
-#include "cpu/io.h"
+
 
 #define PACKED __attribute__((__packed__))
 

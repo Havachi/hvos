@@ -1,4 +1,7 @@
 #include "klibc/string.h"
+#include "klibc/printf.h"
+#include <stddef.h>
+#include <string.h>
 
 char buffer[33] = {0};
 
@@ -83,6 +86,25 @@ void	*kmemcpy(void *restrict dest, const void *restrict src, size_t n) {
 	return dest;
 }
 
+size_t kstrlen(const char *str){
+	if ((uint64_t)str == 0x0A || (uint64_t)str < 0x1000) {
+        uint64_t *rbp_ptr;
+        asm volatile("mov %%rbp, %0" : "=r"(rbp_ptr));
+        for(;;);
+    }
+	size_t len = 0;
+	while (str[len++])
+		;
+	return len;
+}
+
+size_t kstrnlen(const char *str, const size_t n){
+	size_t len = 0;
+	while (str[len++] && len < n)
+		;
+	return len;
+}
+
 int kstrcmp(const char *s1, const char *s2) {
 	const unsigned char *p1 = (const unsigned char *)s1;
 	const unsigned char *p2 = (const unsigned char *)s2;
@@ -108,4 +130,12 @@ int kstrncmp(const char *s1, const char *s2, register size_t n) {
 	return 0;
 	}
 	return 0;
+}
+
+char *kstrncpy(char *s1, const char *s2, register size_t n) {
+	size_t len = kstrnlen(s2, n);
+	kmemcpy(s1, s2, len);
+	if (len < n)
+		kmemset(s1 +len, '\0', n - len);
+	return s1;
 }

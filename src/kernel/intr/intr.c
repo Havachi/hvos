@@ -10,6 +10,7 @@ extern void spurious_interrupt();
 extern void scheduler_isr_asm();
 extern void keyboard_interrupt(void);
 extern void pagefault_interrupt(void);
+extern void gpf_exc(void);
 
 void intr_init() {
 	idt_init();
@@ -17,7 +18,8 @@ void intr_init() {
 	idt_set_handler(INT_KBD, INTERRUPT_GATE, keyboard_interrupt);
 	idt_set_handler(INT_SPURIOUS, INTERRUPT_GATE, spurious_interrupt);
 	idt_set_handler(INT_SCHEDULER, INTERRUPT_GATE, scheduler_isr_asm);
-	idt_set_handler(INT_PAGE_FAULT, INTERRUPT_GATE, pagefault_interrupt);
+	//idt_set_handler(INT_PAGE_FAULT, INTERRUPT_GATE, pagefault_interrupt);
+	idt_set_handler(INT_GP,INTERRUPT_GATE , gpf_exc);
 
 	pic_init();
 	local_apic_init();

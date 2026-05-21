@@ -1,13 +1,16 @@
 #include "kernel/mt.h"
+#include "asm/segment.h"
+#include "kernel/scheduler/task_state.h"
 #include "klibc/printf.h"
 #include "klibc/string.h"
+#include <string.h>
 
 task_t tasks[3];
 int current_task = 0;
 int nb_tasks = 0;
 
 static uint8_t idle_task_stack[PAGE_SIZE] __attribute__((aligned(16)));
-
+uint64_t current_task_syscall_stack;
 extern void tss_set_kernel_stack(uint64_t stack_ptr);
 
 void idle_task_entry(void) {
@@ -27,17 +30,9 @@ uint64_t scheduler_c(uint64_t old_rsp) {
 		current_task = (current_task + 1) % nb_tasks;
 		if (tasks[current_task].state == TASK_STATE_RUNNING){
 			break;
-		}
-
-		if (tasks[current_task].state == TASK_STATE_WAITING){
-			if (tasks[current_task].kernel_stack_top != 0){
-				uint64_t k_bottom = tasks[current_task].kernel_stack_top - PAGE_SIZE;
-				kfree((void *)k_bottom);
-				tasks[current_task].kernel_stack_top = 0;
-			}
-			tasks[current_task].state = 4;
-		}
-		if (current_task == starting_task) {
+		} else if (tasks[current_task].state == TASK_STATE_WAITING){
+		} else if (tasks[current_task].state == TASK_STATE_BLOCKED_ON_KEYBOARD) {
+		} else if (current_task == starting_task) {
 			if (tasks[0].state == TASK_STATE_RUNNING) {
 				current_task = 0;
 				break;
@@ -55,9 +50,10 @@ uint64_t scheduler_c(uint64_t old_rsp) {
 		asm volatile("mov %0, %%cr3" :: "r"(kernel_pml4_phys) : "memory");
 	}
 
-	
 	uint64_t safe_kernel_stack = tasks[current_task].kernel_stack_top;
 	tss_set_kernel_stack(safe_kernel_stack);
+	current_task_syscall_stack = safe_kernel_stack;
+
 	return tasks[current_task].rsp;
 }
 
@@ -111,12 +107,12 @@ void init_multitasking() {
 	
 	uint64_t *idle_stack_top = (uint64_t *)&idle_task_stack[4096];
 	tasks[0].kernel_stack_top = (uint64_t) idle_stack_top;
-
+	kstrncpy(tasks[0].name, "Kernel\0", 7);
 	stack_frame_t *frame = (stack_frame_t *)((uintptr_t)idle_stack_top - sizeof(stack_frame_t));
     kmemset(frame, 0, sizeof(stack_frame_t));
     frame->rip = (uint64_t)idle_task_entry;
-    frame->cs = 0x08;
-    frame->ss = 0x10;
+    frame->cs = __KERNEL_CS;
+    frame->ss = __KERNEL_DS;
     frame->rsp = (uint64_t)idle_stack_top;
     frame->rflags = 0x202;
 
@@ -127,7 +123,7 @@ void init_multitasking() {
 }
 
 
-task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4) {
+task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4, char *name) {
 	if (nb_tasks >= 3) return NULL;
 
 	task_t *task = &tasks[nb_tasks];
@@ -150,16 +146,31 @@ task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4) {
 	frame->rip = (uint64_t)entry_point;
 	frame->rsp = (uint64_t)user_stack_virt_top;
 
-	frame->cs = 0x1B;
-	frame->ss = 0x23;
+	frame->cs = __USER_CS;
+	frame->ss = __USER_DS;
 	frame->rflags = 0x202;
 
-	uint64_t frame_offset_from_top = PAGE_SIZE - sizeof(stack_frame_t);
-	task->rsp = ((uint64_t)u_stack_phys + hhdm_offset) + frame_offset_from_top;
+
+	task->rsp = (uint64_t)frame;
 	task->cr3 = (uint64_t)process_pml4;
 	task->state = TASK_STATE_RUNNING;
+	 
+	kstrncpy(task->name, name, 64);
 	nb_tasks++;
 	return task;
+}
+
+extern void test_fun();
+extern void first_user_app();
+
+void create_test_task() {
+	uint64_t process_cr3 = vmm_create_address_space();
+	pt_entry *process_pml4 = (pt_entry *)(process_cr3 + hhdm_offset);
+	task_t* new_process = create_user_task(first_user_app, process_pml4, "test");
+	new_process->cr3 = process_cr3;
+	new_process->state = TASK_STATE_RUNNING;
+
+	return;
 }
 
 

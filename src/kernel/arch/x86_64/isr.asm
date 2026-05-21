@@ -85,11 +85,3 @@ isr%1:
 %endrep
 
 
-global keyboard_handler_asm
-extern keyboard_handler_c
-
-keyboard_handler_asm:
-	pushall
-	call keyboard_handler_c
-	popall
-	iretq

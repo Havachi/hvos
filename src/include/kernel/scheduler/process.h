@@ -9,6 +9,8 @@
 
 typedef uint64_t pid_t;
 
+
+
 typedef struct context_s {
 	uint64_t eax;
 	uint64_t ecx;
@@ -33,6 +35,8 @@ typedef struct pcb_s {
 	uint64_t	time_slice;
 	pd_table_t	*page_dir;
 } pcb_t;
+
+
 
 extern list_t* process_list;
 extern pcb_t* current_process;

@@ -4,12 +4,6 @@
 #include "kernel/sync.h"
 static safe_lock_t print_lock = {0};
 
-static int _strlen(const char *s) {
-	int len = 0;
-	while (s[len]) len++;
-	return len;
-}
-
 void kprintf(const char * format, ...) {
 	va_list args;
 	va_start(args, format);
@@ -62,7 +56,7 @@ void kvprintf(const char *format, va_list args) {
 			case 's':{
 				const char *s = va_arg(args, const char *);
 				if (!s) s = "(null)";
-				int len = _strlen(s);
+				int len = kstrlen(s);
 				if (ljust) {
 					print(s);
 					for (int i = 0; i < width - len; i++) put_char(padding);
@@ -80,7 +74,7 @@ void kvprintf(const char *format, va_list args) {
 				int is_neg = (i < 0);
 				uint32_t val = is_neg ? -i : i;
 				itoa(val, buf, 10);
-				int len = _strlen(buf) + (is_neg ? 1 : 0);
+				int len = kstrlen(buf) + (is_neg ? 1 : 0);
 				if (is_neg)put_char('-');
 				for (int j = 0; j < width - len; j++) put_char(padding);
 				print(buf);
@@ -97,7 +91,7 @@ void kvprintf(const char *format, va_list args) {
 					int i = va_arg(args, int);
                 	itoa(i, buf, 16);
 				}
-                int len = _strlen(buf) + 2;
+                int len = kstrlen(buf) + 2;
                 
                 print("0x");
                 for (int j = 0; j < width - (len-2); j++) put_char(padding);
@@ -108,7 +102,7 @@ void kvprintf(const char *format, va_list args) {
              uintptr_t ptr = (uintptr_t)va_arg(args, void *);
                 char buf[32];
                 itoa(ptr, buf, 16);
-                int len = _strlen(buf) + 2;
+                int len = kstrlen(buf) + 2;
                 
                 print("0x");
                 for (int j = 0; j < width - len; j++) put_char(padding); // Padding

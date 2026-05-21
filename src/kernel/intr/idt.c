@@ -37,11 +37,22 @@ static void idt_set_entry(uint8_t index, uint64_t base, uint16_t selector, uint1
 	entry->offset_3 = (uint32_t)(base >> 32);
 	entry->zero = 0;
 }
+static void idt_set_entry_with_ist(uint8_t index, uint64_t base, uint16_t selector, uint16_t type, uint8_t ist) {
+	idt_entry_t *entry = &idt[index];
+
+	entry->offset_1 = (uint16_t)base;
+	entry->selector = selector;
+	entry->type_attributes = type;
+	entry->offset_2 = (uint16_t)(base >> 16);
+	entry->offset_3 = (uint32_t)(base >> 32);
+	entry->zero = 0;
+}
 
 void idt_set_handler(uint8_t index, uint16_t type, void (*handler)()) {
 	if (handler) {
 		uint16_t selector = 0x8;
-		idt_set_entry(index, (uint64_t)handler, selector, type);
+		uint8_t ist_index = (index == 0x30) ? 1 : 0;
+		idt_set_entry_with_ist(index, (uint64_t)handler, selector, type, ist_index);
 	} else {
 		idt_set_entry(index, 0, 0, 0);
 	}

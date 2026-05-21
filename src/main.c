@@ -35,9 +35,9 @@ void kmain(void) {
 	uint64_t ram_bytes = total_pages * 4096;
 	print_available_ram(ram_bytes);
     kprintf("CPU with %d core\n", g_acpi_cpu_count);
-    
     kprintf("loading shell\n");
 	elf_load_and_run("shell.elf");
+	//create_test_task();
     for (;;) {
         yield();
     }

@@ -62,14 +62,14 @@ int elf_load_and_run(const char* path){
 		}
 	}
 	
-	extern task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4);
+	extern task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4, char *name);
 	extern task_t tasks[];
 	extern int nb_tasks;
 
 	kprintf("Loading %s, entry at %016lx\n", path, header->e_entry);
 
 
-	task_t* new_process = create_user_task((void(*)(void))header->e_entry, process_pml4);
+	task_t* new_process = create_user_task((void(*)(void))header->e_entry, process_pml4, (char *)path);
 	new_process->cr3 = process_cr3;
 	new_process->state = TASK_STATE_RUNNING;
 

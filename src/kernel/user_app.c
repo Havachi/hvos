@@ -55,6 +55,12 @@ int exec(const char* path) {
 	return result;
 }
 
+void test_fun() {
+	user_print("test func\n");
+	for (;;) {
+		user_print("loop\n");
+	}
+}
 
 
 void first_user_app(void) {

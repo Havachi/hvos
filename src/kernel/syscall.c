@@ -57,6 +57,7 @@ int sys_read(int fd, uint8_t *buffer, uint32_t size) {
 				continue;
 			}
 			buffer[bytes_read++] = c;
+			kprintf("%c", c); 
 			if (c == '\n') break;
 		}
 		return bytes_read;
@@ -70,7 +71,7 @@ int sys_write(int fd, uint8_t *buffer, uint32_t size) {
 	if (buffer == NULL || size == 0) return -1;
 	if (fd == 1) {
 		for (uint32_t i = 0; i < size; i++) {
-			kprintf("%s", buffer[i]);
+			kprintf("%c", buffer[i]);
 		}
 		return size;
 	}
@@ -93,7 +94,7 @@ int sys_exec(const char *path) {
 	return elf_load_and_run(path);
 }
 
-void syscall_handler(syscall_frame_t *frame) {
+void syscall_handler(stack_frame_t *frame) {
 	uint64_t syscall_number = frame->rax;
 	switch (syscall_number) {
 		case SC_UPRINT:

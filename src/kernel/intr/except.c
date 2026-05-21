@@ -1,4 +1,5 @@
 #include "kernel/except.h"
+#include <stdint.h>
 
 static const char *s_exceptionDesc[20] =
 {
@@ -47,7 +48,13 @@ void exception_dump(register_t regs)
 }
 
 void page_fault_handler_c(){
-    kprintf("PAGEFAULT!");
+    kprintf("PAGEFAULT!\n");
+    for(;;){
+        asm volatile("hlt");
+    }
+}
+void gpf_execption_handler_c(uint64_t rip, uint64_t err) {
+	kprintf("GPF!!!!\nRIP: %lx\nERR:%lx\n", rip, err);
     for(;;){
         asm volatile("hlt");
     }

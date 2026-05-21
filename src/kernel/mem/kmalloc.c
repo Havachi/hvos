@@ -1,4 +1,6 @@
-#include "kernel/mem.h"
+#include "mem/mem.h"
+#include "kernel/sync.h"
+#include "klibc/string.h"
 
 static safe_lock_t kmalloc_lock = {0};
 
@@ -16,7 +18,7 @@ void *kmalloc(uint64_t size) {
 		heap_expand(PAGE_SIZE);
 		heap_start->size = PAGE_SIZE - sizeof(heap_header_t);
 		heap_start->is_free = true;
-		heap_start->next = NULL;
+		heap_start->next = NULL;NULL
 	}
 	*/
 

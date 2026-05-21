@@ -5,13 +5,14 @@ global exception_handlers
 global pit_interrupt
 global spurious_interrupt
 global keyboard_interrupt
+global pagefault_interrupt
 
 extern g_pit_ticks
 extern g_local_apic_address
 extern exception_dump
 extern scheduler_c
 extern keyboard_handler_c
-
+extern page_fault_handler_c
 default_exception_handler:
 	jmp $
 
@@ -170,5 +171,10 @@ keyboard_interrupt:
         pop r14
         pop r15
         iretq
+
+pagefault_interrupt:
+        call page_fault_handler_c
+        iretq
+
 spurious_interrupt:
         iretq

@@ -2,14 +2,6 @@
 #define HVOS_SYSCALL_H
 
 #include <stdint.h>
-#include "klibc/printf.h"
-#include "asm/asm.h"
-#include "kernel/vfs.h"
-#include "kernel/mt.h"
-#include "kernel/syscall_id.h"
-#include "kernel/elf.h"
-
-
 
 #define MAX_FD          16
 #define MSR_STAR		0xC0000081

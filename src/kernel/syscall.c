@@ -1,4 +1,10 @@
 #include "kernel/syscall.h"
+#include "klibc/printf.h"
+#include "kernel/vfs.h"
+#include "kernel/mt.h"
+#include "kernel/syscall_id.h"
+#include "kernel/elf.h"
+#include "kernel/elf.h"
 
 static vfs_node_t* open_files[MAX_FD] = {NULL};
 extern task_t tasks[];
@@ -64,7 +70,7 @@ int sys_write(int fd, uint8_t *buffer, uint32_t size) {
 	if (buffer == NULL || size == 0) return -1;
 	if (fd == 1) {
 		for (uint32_t i = 0; i < size; i++) {
-			put_char((char)buffer[i]);
+			kprintf("%s", buffer[i]);
 		}
 		return size;
 	}
@@ -97,7 +103,7 @@ void syscall_handler(syscall_frame_t *frame) {
 			frame->rax = sys_read((int)frame->rdi, (uint8_t *)frame->rsi, (uint32_t)frame->rdx);
 			break;
 		case SC_WRITE:
-			frame->rax = sys_write((int)frame->rdi, (const uint8_t *)frame->rsi, (uint32_t)frame->rdx);
+			frame->rax = sys_write((int)frame->rdi, (uint8_t *)frame->rsi, (uint32_t)frame->rdx);
 			break;
 		case SC_OPEN:
 			frame->rax = sys_open((const char *)frame->rdi);

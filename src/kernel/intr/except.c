@@ -45,3 +45,10 @@ void exception_dump(register_t regs)
 
     for (;;) {}
 }
+
+void page_fault_handler_c(){
+    kprintf("PAGEFAULT!");
+    for(;;){
+        asm volatile("hlt");
+    }
+}

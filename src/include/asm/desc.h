@@ -5,7 +5,7 @@
 #include "asm/desc_defs.h"
 #include "kernel/idt.h"
 #include "hvos/compiler_attributes.h"
-#include "kernel/mem.h"
+#include "mem/mem.h"
 
 #define __force
 typedef struct gdt_page {

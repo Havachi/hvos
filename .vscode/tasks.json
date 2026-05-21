@@ -7,6 +7,21 @@
 		"linux": {
 			"command": "qemu-system-x86_64 -S -gdb tcp::1234 -boot d -cdrom hvos-boot.iso -m 1G -smp 4 -daemonize"
 		}
+	},
+	{
+		"label": "Build HVOS",
+		"type": "shell",
+		"command": "make",
+		"group": {
+			"kind": "build",
+			"isDefault": true
+		},
+		"problemMatcher": "$gcc",
+		"presentation": {
+			"reveal": "silent",
+			"panel": "shared",
+			"clear": true
+		}
 	}
 ]
 }

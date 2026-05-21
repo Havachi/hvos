@@ -1,9 +1,10 @@
 #include "kernel/acpi.h"
 #include "kernel/boot.h"
-#include "kernel/mem.h"
+#include "mem/mem.h"
 #include "kernel/local_apic.h"
 #include "kernel/io_apic.h"
 #include "kernel/print.h"
+#include "klibc/string.h"
 
 #ifdef PRINTV
 #undef 	PRINTV
@@ -57,22 +58,24 @@ static void acpi_parse_apic(acpi_madt_t *madt) {
 			kprintf("Error: Malformed MADT entry with length 0\n");
 			break;
 		}
-
+		madt_lapic_t *lapic = NULL;
+		madt_iopic_t *ioapic = NULL;
+		madt_iso_t *iso = NULL;
 		switch (entry_type) {
 			case APIC_TYPE_LOCAL_APIC:
-				madt_lapic_t *lapic = (madt_lapic_t *)current_entry;
+				lapic = (madt_lapic_t *)current_entry;
 				if ((lapic->flags & 1) || (lapic->flags & 2)) {
 					kprintf("Found CPU Core - ACPI ID: %d, APIC ID: %d\n", lapic->acpi_processor_id, lapic->apic_id);
 					register_cpu_core(lapic->apic_id);
 				}
 				break;
 			case APIC_TYPE_IO_APIC:
-				madt_iopic_t *ioapic = (madt_iopic_t *)current_entry;
+				ioapic = (madt_iopic_t *)current_entry;
 				kprintf("Found I/O APIC - ID: %d, Address: %016lx, GSI Base: %d\n", ioapic->io_apic_id, ioapic->io_apic_address, ioapic->global_system_interrupt_base);
 				g_io_apic_addr = (uint8_t *)(ioapic->io_apic_address + hhdm_offset);
 				break;
 			case APIC_TYPE_INTERRUPT_OVERRIDE:
-				madt_iso_t *iso = (madt_iso_t *) current_entry;
+				iso = (madt_iso_t *) current_entry;
 				kprintf("Found Interrupt Override - ISA IRQ %d -> GSI Pin %d\n", iso->source, iso->bus);
 				break;
 			default:
@@ -86,12 +89,13 @@ static void acpi_parse_dt(acpi_sdt_header_t *header) {
 	char *signature = header->signature;
 
 	char sig[5] = {0};
-	strcpy(sig, signature);
+
+	kstrcpy(sig, signature);
 	sig[4] = '\0';
 	PRINTV("%s \n", sig);
-	if (!strncmp(sig, "FACP", 4)) {
+	if (!kstrncmp(sig, "FACP", 4)) {
 		acpi_parse_facp((acpi_fadt *)header);
-	} else if (!strncmp(sig, "MADT", 4) || !strncmp(sig, "APIC", 4)) {
+	} else if (!kstrncmp(sig, "MADT", 4) || !kstrncmp(sig, "APIC", 4)) {
 		acpi_parse_apic((acpi_madt_t *)header);
 	}
 }
@@ -100,7 +104,7 @@ static void acpi_parse_dt(acpi_sdt_header_t *header) {
 static void acpi_parse_rsdt(acpi_rsdt_t *rsdt) {
 	s_rsdt = &rsdt->header;
 	uint32_t nb_entries = ((rsdt->header.length - sizeof(acpi_sdt_header_t)) / 4);
-	for (int i = 0; i < nb_entries; i++) {
+	for (uint32_t i = 0; i < nb_entries; i++) {
 		acpi_parse_dt((acpi_sdt_header_t *)(uintptr_t)(rsdt->entries[i] + hhdm_offset));
 	}
 }

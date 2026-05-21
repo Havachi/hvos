@@ -1,14 +1,9 @@
 #ifndef HVOS_MT_H
 #define HVOS_MT_H
 
-#include "kernel/mem.h"
 #include <stdint.h>
-
-#define TASK_STATE_RUNNING	0
-#define TASK_STATE_WAITING	1
-#define TASK_STATE_DEAD		2
-
-#define TASK_STATE_BLOCKED_ON_KEYBOARD 10
+#include "mem/mem.h"
+#include "kernel/scheduler/task_state.h"
 
 typedef struct {
 	uint64_t rsp;

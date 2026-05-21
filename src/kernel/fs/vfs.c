@@ -27,7 +27,7 @@ void vfs_init(void) {
 	uint64_t tar_size = response->modules[0]->size;
 	uint64_t offset = 0;
 
-	strcpy(root_dir_node.name, "/");
+	kstrcpy(root_dir_node.name, "/");
 	root_dir_node.flags = VFS_DIR;
 	root_dir_node.size = 0;
 	root_dir_node.finddir = ramdisk_finddir;
@@ -47,7 +47,7 @@ void vfs_init(void) {
 				final_name += 2;
 			}
 
-			strcpy(node->name, final_name);
+			kstrcpy(node->name, final_name);
 			node->size = file_size;
 			node->flags = VFS_FILE;
 

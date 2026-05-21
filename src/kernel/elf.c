@@ -1,6 +1,6 @@
 #include "kernel/elf.h"
 #include "kernel/vfs.h"
-#include "kernel/mem.h"
+#include "mem/mem.h"
 #include "kernel/mt.h"
 #include "klibc/printf.h"
 
@@ -51,12 +51,12 @@ int elf_load_and_run(const char* path){
 				uint8_t *hhdm_dest = (uint8_t *)((uint64_t)phys_frame + hhdm_offset);
 				if (bytes_to_copy > 0) {
 					uint8_t *source_ptr = elf_buffer + pheader[i].p_offset + page_offset_in_segment;
-					memcpy(hhdm_dest, source_ptr, bytes_to_copy);
+					kmemcpy(hhdm_dest, source_ptr, bytes_to_copy);
 					if (bytes_to_copy < (int64_t) PAGE_SIZE) {
-						memset(hhdm_dest + bytes_to_copy, 0, PAGE_SIZE-bytes_to_copy);
+						kmemset(hhdm_dest + bytes_to_copy, 0, PAGE_SIZE-bytes_to_copy);
 					}
 				} else {
-					memset(hhdm_dest, 0, PAGE_SIZE);
+					kmemset(hhdm_dest, 0, PAGE_SIZE);
 				}
 			}
 		}

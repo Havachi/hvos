@@ -39,7 +39,7 @@ static void set_gdt_tss_gate (uint64_t base) {
 	gdt.tss_high = high;
 }
 
-void init_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
+void init_gdt(uint64_t _hddm_offset, void *pmm_allocated_page) {
 
 	//[0x0] NULL SEGM
 
@@ -48,7 +48,7 @@ void init_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
 	set_gdt_gate(GDT_ENTRY_KERNEL_DS, 0x0, 0xFFFFF, 0x92, 0xCF);
 	set_gdt_gate(GDT_ENTRY_DEFAULT_USER_DS, 0x0, 0xFFFFF, 0xF2, 0xCF);
 	set_gdt_gate(GDT_ENTRY_DEFAULT_USER_CS, 0x0, 0xFFFFF, 0xFA, 0xAF);
-	memset(&global_tss, 0, sizeof(tss_t));
+	kmemset(&global_tss, 0, sizeof(tss_t));
 
 	uint64_t kernel_stack_top = (uint64_t)pmm_allocated_page + hhdm_offset + 4096;
 	global_tss.rsp0 = kernel_stack_top;
@@ -64,7 +64,7 @@ void init_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
 	reload_tss();
 }
 
-void newinit_gdt(uint64_t hddm_offset, void *pmm_allocated_page) {
+void newinit_gdt(uint64_t _hddm_offset, void *pmm_allocated_page) {
 	struct gdt_page *gp = rip_rel_ptr((void *)(__force uint64_t)&gdt_page);
 	void *handler = NULL;
 

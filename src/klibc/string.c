@@ -60,7 +60,7 @@ char *litoa(uint64_t num, char* str, int radix) {
 	return str;
 }
 
-void	*memcpy(void *restrict dest, const void *restrict src, size_t n) {
+void	*kmemcpy(void *restrict dest, const void *restrict src, size_t n) {
 	unsigned char *d = (unsigned char *)dest;
 	const unsigned char *s = (const unsigned char *)src;
 
@@ -83,7 +83,7 @@ void	*memcpy(void *restrict dest, const void *restrict src, size_t n) {
 	return dest;
 }
 
-int strcmp(const char *s1, const char *s2) {
+int kstrcmp(const char *s1, const char *s2) {
 	const unsigned char *p1 = (const unsigned char *)s1;
 	const unsigned char *p2 = (const unsigned char *)s2;
 
@@ -95,7 +95,7 @@ int strcmp(const char *s1, const char *s2) {
 	return *p1 - *p2;
 }
 
-int strncmp(const char *s1, const char *s2, register size_t n) {
+int kstrncmp(const char *s1, const char *s2, register size_t n) {
 	register unsigned char u1, u2;
 
 	while (n-- > 0)

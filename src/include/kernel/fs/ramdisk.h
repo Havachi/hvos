@@ -1,11 +1,7 @@
 #ifndef HVOS_FS_RAMDISK
 #define HVOS_FS_RAMDISK
 #include "kernel/vfs.h"
-#include "kernel/boot.h"
-#include "kernel/mem.h"
-#include "klibc/printf.h"
-#include "klibc/string.h"
-#include "kernel/vfs.h"
+
 
 
 

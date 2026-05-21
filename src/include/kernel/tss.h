@@ -1,8 +1,7 @@
 #ifndef HVOS_TSS_H
 #define HVOS_TSS_H
 #include <stdint.h>
-#include "kernel/mem.h"
-#include "klibc/string.h"
+
 
 typedef struct tss {
 	uint32_t reserved0;

@@ -1,11 +1,8 @@
-#include "kernel/mem.h"
-#include <string.h>
-#include "klibc/printf.h"
+#include "mem/mem.h"
+#include "mem/paging.h"
 #include "klibc/string.h"
+#include "klibc/printf.h"
 
-// Globals linked via extern from kernel/mem.h
-uint8_t *bitmap;
-uint64_t bitmap_size;
 uint64_t total_pages;
 
 heap_header_t *heap_start = NULL;
@@ -46,28 +43,29 @@ void display_memmap_debug(uint64_t nb_entries, struct limine_memmap_entry **entr
 }
 
 void vmm_map(volatile pt_entry* pml4, uint64_t virt, uint64_t phys, uint64_t flags) {
-    uint64_t pml4_idx = (virt >> 39) & 0x1FF;
-    uint64_t pdpt_idx = (virt >> 30) & 0x1FF;
-    uint64_t pd_idx   = (virt >> 21) & 0x1FF;
-    uint64_t pt_idx   = (virt >> 12) & 0x1FF;
+    virtual_address_t *addr = (virtual_address_t *)&virt;
+    uint64_t pml4_idx = addr->pml4_index;
+    uint64_t pdpt_idx = addr->pdpt_index;
+    uint64_t pd_idx   = addr->pd_index;
+    uint64_t pt_idx   = addr->pt_index;
 
     if (!(pml4[pml4_idx] & PTE_PRESENT)) {
         uint64_t new_table = (uint64_t)pmm_alloc();
-        memset(get_virt(new_table), 0, PAGE_SIZE);
+        kmemset(get_virt(new_table), 0, PAGE_SIZE);
         pml4[pml4_idx] = new_table | PTE_PRESENT | PTE_WRITABLE | PTE_USER;
     }
     pt_entry *pdpt = get_virt(pml4[pml4_idx] & PTE_ADDR_MASK);
 
     if (!(pdpt[pdpt_idx] & PTE_PRESENT)) {
         uint64_t new_table = (uint64_t)pmm_alloc();
-        memset(get_virt(new_table), 0, PAGE_SIZE);
+        kmemset(get_virt(new_table), 0, PAGE_SIZE);
         pdpt[pdpt_idx] = new_table | PTE_PRESENT | PTE_WRITABLE | PTE_USER;
     }
     pt_entry* pd = get_virt(pdpt[pdpt_idx] & PTE_ADDR_MASK);
 
     if (!(pd[pd_idx] & PTE_PRESENT)) {
         uint64_t new_table = (uint64_t)pmm_alloc();
-        memset(get_virt(new_table), 0, PAGE_SIZE);
+        kmemset(get_virt(new_table), 0, PAGE_SIZE);
         pd[pd_idx] = new_table | PTE_PRESENT | PTE_WRITABLE | PTE_USER;
     }
     pt_entry* pt = get_virt(pd[pd_idx] & PTE_ADDR_MASK);
@@ -85,7 +83,7 @@ void init_mem(struct limine_memmap_response* memmap, uint64_t _hhdm_offset) {
     pt_entry* old_pml4 = (pt_entry*)(old_pml4_phys + hhdm_offset);
     kernel_pml4_phys = (uint64_t)pmm_alloc();
     pt_entry* new_pml4 = (pt_entry*)(kernel_pml4_phys + hhdm_offset);
-    memset(new_pml4, 0, 4096);
+    kmemset(new_pml4, 0, 4096);
 
     for (int i = 256; i < 512; i++) new_pml4[i] = old_pml4[i];
     for (int i = 0; i < 4; i++)    new_pml4[i] = old_pml4[i];
@@ -152,7 +150,7 @@ uint64_t vmm_create_address_space(void) {
     uint64_t new_pml4_phys = (uint64_t) pmm_alloc();
     pt_entry *new_pml4 = (pt_entry *)(new_pml4_phys + hhdm_offset);
 
-    memset(new_pml4, 0 , PAGE_SIZE);
+    kmemset(new_pml4, 0 , PAGE_SIZE);
     extern uint64_t kernel_pml4_phys;
     pt_entry *kernel_pml4 = (pt_entry *)(kernel_pml4_phys + hhdm_offset);
     for (int i = 256; i < 512; i++) {

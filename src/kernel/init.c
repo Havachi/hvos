@@ -4,7 +4,7 @@
 #include "kernel/idt.h"
 #include "kernel/intr.h"
 #include "kernel/isr.h"
-#include "kernel/mem.h"
+#include "mem/mem.h"
 #include "kernel/acpi.h"
 #include "kernel/mt.h"
 #include "kernel/reg.h"

@@ -1,4 +1,6 @@
 #include "kernel/mt.h"
+#include "klibc/printf.h"
+#include "klibc/string.h"
 
 task_t tasks[3];
 int current_task = 0;
@@ -67,7 +69,7 @@ task_t *create_task(void (*entry_point)(void)) {
 	uint64_t *stack_top = (uint64_t *)((uintptr_t) stack_bottom + 4096);
 
 	stack_frame_t *frame = (stack_frame_t *)((uintptr_t) stack_top - sizeof(stack_frame_t));
-	memset(frame, 0, sizeof(stack_frame_t));
+	kmemset(frame, 0, sizeof(stack_frame_t));
 
 	frame->rip = (uint64_t) entry_point;
 	frame->cs = 0x08;
@@ -93,7 +95,7 @@ pt_entry* create_process_page_table(void) {
 	uint64_t phys_addr =(uint64_t)pmm_alloc();
 	pt_entry *process_pml4 = (pt_entry *)(phys_addr + hhdm_offset);
 
-	memset(process_pml4, 0, PAGE_SIZE);
+	kmemset(process_pml4, 0, PAGE_SIZE);
 
 	for (int i = 256; i < 512; i++) {
 		process_pml4[4] = current_pml4[i];
@@ -111,7 +113,7 @@ void init_multitasking() {
 	tasks[0].kernel_stack_top = (uint64_t) idle_stack_top;
 
 	stack_frame_t *frame = (stack_frame_t *)((uintptr_t)idle_stack_top - sizeof(stack_frame_t));
-    memset(frame, 0, sizeof(stack_frame_t));
+    kmemset(frame, 0, sizeof(stack_frame_t));
     frame->rip = (uint64_t)idle_task_entry;
     frame->cs = 0x08;
     frame->ss = 0x10;
@@ -143,7 +145,7 @@ task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4) {
 
 	uint64_t hhdm_stack_top = (uint64_t) u_stack_phys + hhdm_offset + PAGE_SIZE;
 	stack_frame_t *frame = (stack_frame_t *)((uintptr_t)hhdm_stack_top - sizeof(stack_frame_t));
-	memset(frame, 0, sizeof(stack_frame_t));
+	kmemset(frame, 0, sizeof(stack_frame_t));
 
 	frame->rip = (uint64_t)entry_point;
 	frame->rsp = (uint64_t)user_stack_virt_top;

@@ -1,5 +1,7 @@
 #include "klibc/printf.h"
-
+#include "klibc/string.h"
+#include "kernel/video.h"
+#include "kernel/sync.h"
 static safe_lock_t print_lock = {0};
 
 static int _strlen(const char *s) {

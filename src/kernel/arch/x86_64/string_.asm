@@ -1,7 +1,7 @@
 section .text
 
-global memset
-memset:
+global kmemset
+kmemset:
     push rdi
     mov rax, rsi
     mov rcx, rdx
@@ -9,8 +9,8 @@ memset:
     pop rax
     ret
     
-global memset32
-memset32:
+global kmemset32
+kmemset32:
     push rdi
     mov rax, rsi
     mov rcx, rdx
@@ -18,8 +18,8 @@ memset32:
     pop rax
     ret
     
-global memmove
-memmove:
+global kmemmove
+kmemmove:
     mov rcx, rdx
     mov rax, rdi
 
@@ -39,8 +39,8 @@ memmove:
   .done:
     ret
 
-global memcmp
-memcmp:
+global kmemcmp
+kmemcmp:
     mov rcx, rdx
     repe cmpsb
     je .equal
@@ -56,9 +56,9 @@ memcmp:
   .done:
     ret
 
-global strcpy
+global kstrcpy
 ; char* strcpy(char* dest, const char* src)
-strcpy:
+kstrcpy:
     push rdi            ; Save original dest for return value
     
     ; 1. Find the length (like strlen)

@@ -1,9 +1,15 @@
 #include "kernel/intr.h"
+#include "kernel/acpi.h"
+#include "kernel/idt.h"
+#include "kernel/io_apic.h"
+#include "kernel/local_apic.h"
+#include "kernel/pic.h"
 
 extern void pit_interrupt();
 extern void spurious_interrupt();
 extern void scheduler_isr_asm();
 extern void keyboard_interrupt(void);
+extern void pagefault_interrupt(void);
 
 void intr_init() {
 	idt_init();
@@ -11,6 +17,7 @@ void intr_init() {
 	idt_set_handler(INT_KBD, INTERRUPT_GATE, keyboard_interrupt);
 	idt_set_handler(INT_SPURIOUS, INTERRUPT_GATE, spurious_interrupt);
 	idt_set_handler(INT_SCHEDULER, INTERRUPT_GATE, scheduler_isr_asm);
+	idt_set_handler(INT_PAGE_FAULT, INTERRUPT_GATE, pagefault_interrupt);
 
 	pic_init();
 	local_apic_init();

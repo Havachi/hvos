@@ -44,7 +44,6 @@ int32_t bitmap_test(uint64_t page_index);
 void heap_init(volatile pt_entry *pml4);
 void heap_expand(uint64_t size_needed);
 
-
 /*kmalloc.c*/
 void *kmalloc(uint64_t size);
 void kfree(void *ptr);
@@ -53,7 +52,6 @@ void kfree(void *ptr);
 void pmm_init(struct limine_memmap_response* memmap);
 void *pmm_alloc();
 void pmm_free(void* addr);
-
 
 
 void display_memmap_debug (uint64_t nb_entries, struct limine_memmap_entry **entries);

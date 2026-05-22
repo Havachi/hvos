@@ -1,5 +1,6 @@
 #ifndef HVOS_DESC_DEFS_H
 #define HVOS_DESC_DEFS_H
+#include "hvos/compiler_attributes.h"
 #include <stdint.h>
 enum {
 	GATE_INTERRUPT = 0xE,
@@ -13,12 +14,12 @@ typedef struct seg_descr {
 	uint16_t	base0;
 	uint16_t	base1, type: 4, s: 1, dpl: 2, p: 1;
 	uint16_t	limit1: 4, avl: 1, l: 1, d: 1, g: 1, base2: 8;
-}__attribute__((packed)) seg_descr_t;
+}__packed seg_descr_t;
 
 struct desc_ptr {
 	uint16_t size;
 	uint64_t address;
-} __attribute__((packed));
+}__packed;
 
 #define GDT_ENTRY_INIT(flags, base, limit)			\
 	{												\

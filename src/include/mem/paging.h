@@ -8,6 +8,7 @@
 
 #define IS_ALIGNED(addr) ((((uint64_t)(addr)) % PAGE_SIZE) == 0)
 #define PAGE_ALIGN(addr) ((((uint64_t)(addr)) + PAGE_MASK) & ~(PAGE_MASK))
+#define ALIGN_BOUND(value, bound) (((value) + ((bound) - 1)) & ~((bound) - 1))
 
 #define ENTRIES_PER_TABLE 512
 

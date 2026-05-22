@@ -10,7 +10,7 @@
 #define __force
 typedef struct gdt_page {
 	seg_descr_t gdt[GDT_ENTRIES];
-} __attribute__((aligned(PAGE_SIZE))) gdt_page_t;
+}__aligned(PAGE_SIZE) __packed gdt_page_t;
 
 static inline void load_gdt(const struct desc_ptr *gdtr) {
 	asm volatile("lgdt %0"::"m"(*gdtr));

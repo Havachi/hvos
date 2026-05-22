@@ -59,26 +59,26 @@ make_exception_handler 18
 make_exception_handler 19
 
 exception_handlers:
-        dq exception0_handler
-        dq exception1_handler
-        dq exception2_handler
-        dq exception3_handler
-        dq exception4_handler
-        dq exception5_handler
-        dq exception6_handler
-        dq exception7_handler
-        dq exception8_handler
-        dq exception9_handler
-        dq exception10_handler
-        dq exception11_handler
-        dq exception12_handler
-        dq exception13_handler
-        dq exception14_handler
-        dq exception15_handler
-        dq exception16_handler
-        dq exception17_handler
-        dq exception18_handler
-        dq exception19_handler
+	dq exception0_handler
+	dq exception1_handler
+	dq exception2_handler
+	dq exception3_handler
+	dq exception4_handler
+	dq exception5_handler
+	dq exception6_handler
+	dq exception7_handler
+	dq exception8_handler
+	dq exception9_handler
+	dq exception10_handler
+	dq exception11_handler
+	dq exception12_handler
+	dq exception13_handler
+	dq exception14_handler
+	dq exception15_handler
+	dq exception16_handler
+	dq exception17_handler
+	dq exception18_handler
+	dq exception19_handler
 
 exception_body:
 	push rax
@@ -94,160 +94,163 @@ exception_body:
 	jmp $
 
 pit_interrupt:
-        push r15
-        push r14
-        push r13
-        push r12
-        push r11
-        push r10
-        push r9
-        push r8
-        push rbp
-        push rdi
-        push rsi
-        push rdx
-        push rcx
-        push rbx
-        push rax
+	push r15
+	push r14
+	push r13
+	push r12
+	push r11
+	push r10
+	push r9
+	push r8
+	push rbp
+	push rdi
+	push rsi
+	push rdx
+	push rcx
+	push rbx
+	push rax
 
-        inc qword [rel g_pit_ticks]
+	inc qword [rel g_pit_ticks]
 
-        mov rax, [rel g_local_apic_address]
-        mov dword [rax + 0xB0], 0
+	mov rax, [rel g_local_apic_address]
+	mov dword [rax + 0xB0], 0
 
-        mov rdi, rsp
-        call scheduler_c
-        mov rsp, rax
+	mov rdi, rsp
+	call scheduler_c
+	mov rsp, rax
 
-        pop rax
-        pop rbx
-        pop rcx
-        pop rdx
-        pop rsi
-        pop rdi
-        pop rbp
-        pop r8
-        pop r9
-        pop r10
-        pop r11
-        pop r12
-        pop r13
-        pop r14
-        pop r15
+	pop rax
+	pop rbx
+	pop rcx
+	pop rdx
+	pop rsi
+	pop rdi
+	pop rbp
+	pop r8
+	pop r9
+	pop r10
+	pop r11
+	pop r12
+	pop r13
+	pop r14
+	pop r15
 
-        iretq
+	iretq
 	
 keyboard_interrupt:
-        push r15
-        push r14
-        push r13
-        push r12
-        push r11
-        push r10
-        push r9
-        push r8
-        push rbp
-        push rdi
-        push rsi
-        push rdx
-        push rcx
-        push rbx
-        push rax
+	push r15
+	push r14
+	push r13
+	push r12
+	push r11
+	push r10
+	push r9
+	push r8
+	push rbp
+	push rdi
+	push rsi
+	push rdx
+	push rcx
+	push rbx
+	push rax
 
-        call keyboard_handler_c
-        mov rax, [rel g_local_apic_address]
-        mov dword [rax + 0xB0], 0
-        
-        pop rax
-        pop rbx
-        pop rcx
-        pop rdx
-        pop rsi
-        pop rdi
-        pop rbp
-        pop r8
-        pop r9
-        pop r10
-        pop r11
-        pop r12
-        pop r13
-        pop r14
-        pop r15
-        iretq
+	call keyboard_handler_c
+	mov rax, [rel g_local_apic_address]
+	mov dword [rax + 0xB0], 0
+	
+	pop rax
+	pop rbx
+	pop rcx
+	pop rdx
+	pop rsi
+	pop rdi
+	pop rbp
+	pop r8
+	pop r9
+	pop r10
+	pop r11
+	pop r12
+	pop r13
+	pop r14
+	pop r15
+	iretq
 
 pagefault_interrupt:
-        push r15
-        push r14
-        push r13
-        push r12
-        push r11
-        push r10
-        push r9
-        push r8
-        push rbp
-        push rdi
-        push rsi
-        push rdx
-        push rcx
-        push rbx
-        push rax
-        call page_fault_handler_c
-        pop rax
-        pop rbx
-        pop rcx
-        pop rdx
-        pop rsi
-        pop rdi
-        pop rbp
-        pop r8
-        pop r9
-        pop r10
-        pop r11
-        pop r12
-        pop r13
-        pop r14
-        pop r15
-        iretq
+	push r15
+	push r14
+	push r13
+	push r12
+	push r11
+	push r10
+	push r9
+	push r8
+	push rbp
+	push rdi
+	push rsi
+	push rdx
+	push rcx
+	push rbx
+	push rax
+	
+	mov rsi, [rsp + 120]
+	
+	call page_fault_handler_c
+	pop rax
+	pop rbx
+	pop rcx
+	pop rdx
+	pop rsi
+	pop rdi
+	pop rbp
+	pop r8
+	pop r9
+	pop r10
+	pop r11
+	pop r12
+	pop r13
+	pop r14
+	pop r15
+	iretq
 
 gpf_exc:
-		push r15
-		push r14
-		push r13
-		push r12
-		push r11
-		push r10
-		push r9
-		push r8
-		push rbp
-		push rdi
-		push rsi
-		push rdx
-		push rcx
-		push rbx
-		push rax
+	push r15
+	push r14
+	push r13
+	push r12
+	push r11
+	push r10
+	push r9
+	push r8
+	push rbp
+	push rdi
+	push rsi
+	push rdx
+	push rcx
+	push rbx
+	push rax
 
-		mov rsi, [rsp + 120]
-    	mov rdi, [rsp + 128]
+	mov rsi, [rsp + 120]
+	mov rdi, [rsp + 128]
 
-		call gpf_execption_handler_c
+	call gpf_execption_handler_c
 
-		pop rax
-		pop rbx
-		pop rcx
-		pop rdx
-		pop rsi
-		pop rdi
-		pop rbp
-		pop r8
-		pop r9
-		pop r10
-		pop r11
-		pop r12
-		pop r13
-		pop r14
-		pop r15
-		add rsp, 8 
-		iretq
+	pop rax
+	pop rbx
+	pop rcx
+	pop rdx
+	pop rsi
+	pop rdi
+	pop rbp
+	pop r8
+	pop r9
+	pop r10
+	pop r11
+	pop r12
+	pop r13
+	pop r14
+	pop r15
+	add rsp, 8 
+	iretq
 
 spurious_interrupt:
-        iretq
+	iretq

@@ -64,11 +64,11 @@ void kernel_initialize(void) {
 	kbd_init();
 	init_fb();
 	init_mem(memmap_request.response, hhdm_request.response->offset);
-	void * secure_tss_page = pmm_alloc();
 	vfs_init();
-	init_gdt(hhdm_offset, secure_tss_page);
-	
 	acpi_init();
+	init_gdt();
+	init_gdt_local();
+	
 	intr_init();
 	init_syscall();
 	init_multitasking();

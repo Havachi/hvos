@@ -47,14 +47,29 @@ void exception_dump(register_t regs)
     for (;;) {}
 }
 
-void page_fault_handler_c(){
-    kprintf("PAGEFAULT!\n");
+void page_fault_handler_c(uint64_t err){
+    kprintf("PAGEFAULT! err: %x\n", err);
     for(;;){
         asm volatile("hlt");
     }
 }
 void gpf_execption_handler_c(uint64_t rip, uint64_t err) {
-	kprintf("GPF!!!!\nRIP: %lx\nERR:%lx\n", rip, err);
+    gf_error_code_t err_code = {0};
+    err_code._raw = err;
+    kprintf("GPF!!!!\nRIP: %lx\nERR:%lx\n", rip, err);
+    kprintf("Error from: ");
+    if (err_code.external == 1) {
+        kprintf("External\n");
+    }
+    if (err_code.tbl == 0) {
+        kprintf("GDT\n");
+    } else if (err_code.tbl == 1 || err_code.tbl == 3) {
+        kprintf("IDT\n");
+    } else if (err_code.tbl == 2) {
+        kprintf("LDT\n");
+    }
+    kprintf("index: %lx\n", err_code.index);
+    kprintf("Halting cpu !\n");
     for(;;){
         asm volatile("hlt");
     }

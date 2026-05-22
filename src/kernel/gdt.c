@@ -1,20 +1,21 @@
 #include "kernel/gdt.h"
-#include "kernel/tss.h"
+#include "kernel/local_apic.h"
 #include "asm/segment.h"
 #include "asm/desc.h"
 #include "asm/asm.h"
+#include "kernel/smp.h"
 #include "klibc/string.h"
-#include "asm/asm.h"
+#include <stdint.h>
+#include "asm/segment.h"
+#include "mem/paging.h"
 
-gdtr_t gdt = {0};
-gdt_ptr_t gdt_ptr = {0};
-tss_t global_tss = {0};
+static gdt_t **gdt_list;
 
 uint64_t syscall_kernel_stack = 0;
 
 gdt_page_t gdt_page = {
 	.gdt = {
-		[0] = 0,
+		[0] = {0},
 		[GDT_ENTRY_KERNEL_CS] = GDT_ENTRY_INIT(DESC_CODE64, 0, 0xFFFFF),
 		[GDT_ENTRY_KERNEL_DS] = GDT_ENTRY_INIT(DESC_DATA64, 0, 0xFFFFF),
 		[GDT_ENTRY_DEFAULT_USER_DS] = GDT_ENTRY_INIT(DESC_DATA64 | DESC_USER, 0, 0xFFFFF),
@@ -22,76 +23,74 @@ gdt_page_t gdt_page = {
 	}
 };
 
-static void set_gdt_tss_gate (uint64_t base) {
-	uint64_t limit = sizeof(tss_t) - 1;
-	uint64_t low = 0;
-
-	low |= (limit & 0xFFFF);
-	low |= (base & 0xFFFF) << 16;
-	low |= ((base >> 16) & 0xFF) << 32;
-	low |= (uint64_t)0x89 << 40;
-	low |= ((limit >> 16) & 0x0F) << 48;
-	low |= ((base >> 24) & 0xFF) << 56;
-
-	uint64_t high = (base >> 32) & 0xFFFFFFFF;
-
-	gdt.tss_low = low;
-	gdt.tss_high = high;
-}
-
-void init_gdt(uint64_t _hddm_offset, void *pmm_allocated_page) {
-
-	//[0x0] NULL SEGM
-
-	set_gdt_gate(0, 0, 0, 0, 0);
-	set_gdt_gate(GDT_ENTRY_KERNEL_CS, 0x0, 0xFFFFF, 0x9A, 0xAF);
-	set_gdt_gate(GDT_ENTRY_KERNEL_DS, 0x0, 0xFFFFF, 0x92, 0xCF);
-	set_gdt_gate(GDT_ENTRY_DEFAULT_USER_DS, 0x0, 0xFFFFF, 0xF2, 0xCF);
-	set_gdt_gate(GDT_ENTRY_DEFAULT_USER_CS, 0x0, 0xFFFFF, 0xFA, 0xAF);
-	kmemset(&global_tss, 0, sizeof(tss_t));
-
-	uint64_t kernel_stack_top = (uint64_t)pmm_allocated_page + hhdm_offset + 4096;
-	global_tss.rsp0 = kernel_stack_top;
-
-	syscall_kernel_stack = kernel_stack_top;
-
-	set_gdt_tss_gate((uint64_t)&global_tss);
-
-	gdt_ptr.limit = (sizeof(gdt) - 1);
-	gdt_ptr.base = (uint64_t) &gdt;
-
-	reload_gdt();
-	reload_tss();
-}
-
-void newinit_gdt(uint64_t _hddm_offset, void *pmm_allocated_page) {
-	struct gdt_page *gp = rip_rel_ptr((void *)(__force uint64_t)&gdt_page);
-	void *handler = NULL;
-
-	struct desc_ptr s = {
-		.address = (uint64_t)gp->gdt,
-		.size = GDT_SIZE - 1,
-	};
-
-	load_gdt(&s);
-
-	asm volatile("movl %%eax, %%ds\n"
-				 "movl %%eax, %%ss\n"
-				 "movl %%eax, %%es\n" : : "a"(__KERNEL_DS) : "memory");
+static void set_gdt_tss_gate (gdt_tss_desc_t* entry, uint64_t base, uint64_t limit, uint32_t flags) {
+	set_gdt_gate(&entry->gdtdesc, base, limit, flags);
+	entry->base_high = (base >> 32) & 0xFFFFFFFF;
 }
 
 
-void set_gdt_gate(int num, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity) {
-	gdt.entries[num].base_low = (base & 0xFFFF);
-	gdt.entries[num].base_middle = (base >> 16) & 0xFF;
-	gdt.entries[num].base_high = (base >> 24) & 0xFF; 
-	gdt.entries[num].limit_low = (limit & 0xFFFF);
-	gdt.entries[num].granularity = (limit >> 16) & 0x0F;
-	gdt.entries[num].granularity |= granularity & 0xF0;	
-	gdt.entries[num].access = access;
+
+
+void set_gdt_gate(gdt_desc_t *entry, uint32_t base, uint32_t limit, uint32_t flags) {
+	entry->base0 	= (base & 0xFFFF);
+	entry->base1 	= (base >> 16) & 0x00FF;
+	entry->base2 	= (base >> 24) & 0x00FF; 
+	entry->limit0 	= (limit & 0xFFFF);
+	entry->limit1 	= ((limit >> 16) & 0xFFFF);
+	entry->type 	= flags & 0x000F;
+	entry->type		= ((flags)	>>  0) & 0x000F;
+	entry->s		= ((flags)	>>  4) & 0x0001;
+	entry->dpl		= ((flags)	>>  5) & 0x0003;
+	entry->p		= ((flags)	>>  7) & 0x0001;
+	entry->avl		= ((flags)	>> 12) & 0x0001;
+	entry->l		= ((flags)	>> 13) & 0x0001;
+	entry->d		= ((flags)	>> 14) & 0x0001;
+	entry->g		= ((flags)	>> 15) & 0x0001;
+}
+
+void init_gdt(){
+	uint32_t cores = g_acpi_cpu_count;
+	gdt_list = (gdt_t **) kmalloc(sizeof(gdt_t) * cores);
+	for (uint32_t i = 0; i < cores; i++) {
+		size_t size = sizeof(gdt_t) * 2;
+		void *gdt_mem = kmalloc(size);
+		kmemset(gdt_mem, 0, size);
+		gdt_list[i] = (gdt_t *) ALIGN_BOUND((uint64_t)gdt_mem, 0x10);
+	}
 }
 
 void tss_set_kernel_stack(uint64_t stack_ptr) {
-	global_tss.rsp0 = stack_ptr;
-	syscall_kernel_stack = stack_ptr;
+	gdt_t *local_gdt = gdt_list[local_apic_get_id()];
+	local_gdt->tss.rsp0 = stack_ptr;
+}
+
+void init_gdt_local(){
+
+	gdt_t *local_gdt = gdt_list[local_apic_get_id()];
+	local_gdt->ptr.limit = GDT_SIZE - 1;
+	local_gdt->ptr.base = (uint64_t)&local_gdt->entries;
+
+	set_gdt_gate(&local_gdt->entries[0],0,0,0);
+	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_KERNEL_CS],0,0xFFFFFFFF,DESC_CODE64);
+	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_KERNEL_DS],0,0xFFFFFFFF,DESC_DATA64);
+	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_DEFAULT_USER_DS],0,0xFFFFFFFF,DESC_DATA64 | DESC_USER);
+	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_DEFAULT_USER_CS],0,0xFFFFFFFF,DESC_CODE64 | DESC_USER);
+	set_gdt_tss_gate(&local_gdt->tss_entry, (uint64_t) &local_gdt->tss, sizeof(tss_t) - 1, 0x9B);
+	kmemset(&local_gdt->tss, 0, sizeof(tss_t));
+	local_gdt->tss.rsp0 = 0;
+
+	asm volatile("lgdt %0" : : "m" (local_gdt->ptr));
+	asm volatile(
+		"movw %0, %%ax;"
+		"movw %%ax, %%ds;"
+		"movw %%ax, %%es;"
+		"movw %%ax, %%fs;"
+		"movw %%ax, %%gs;"
+		"movw %%ax, %%ss;"
+		"pushq %1;"
+		"pushq $reloadcs;"
+		"lretq;"
+		"reloadcs:"
+		 : : "i"(__KERNEL_DS), "i"(__KERNEL_CS): "ax", "memory");
+	asm volatile("ltr %0"::"r"((uint16_t) GDT_ENTRY_TSS) : "memory");
 }

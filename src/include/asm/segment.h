@@ -28,11 +28,12 @@
 #define __KERNEL_DS			(GDT_ENTRY_KERNEL_DS*8)
 #define __USER_CS			(GDT_ENTRY_DEFAULT_USER_CS*8 + 3)
 #define __USER_DS			(GDT_ENTRY_DEFAULT_USER_DS*8 + 3)
+#define __TSS_SEG			(GDT_ENTRY_TSS*8)
 
 /*
  * Number of entries in the GDT table:
  */
-#define GDT_ENTRIES					12
+#define GDT_ENTRIES					6
 #define GDT_SIZE					(GDT_ENTRIES*8)
 
 #define IDT_ENTRIES					256

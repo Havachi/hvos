@@ -1,10 +1,78 @@
 #include "kernel/elf.h"
+#include "kernel/scheduler/mt.h"
+#include "kernel/scheduler/task.h"
+#include "kernel/scheduler/task_state.h"
 #include "kernel/vfs.h"
 #include "mem/mem.h"
-#include "kernel/mt.h"
 #include "klibc/printf.h"
+#include <stdint.h>
 
 extern volatile pt_entry *current_pml4;
+
+
+uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t **task_pml4) {
+
+
+	elf64_header_t *header = (elf64_header_t *)elf_buffer;
+
+	if (*(uint32_t*) header->e_ident != ELF_MAGIC) {
+		kprintf("[ELF] Error loading ELF file: Invalid magic");
+		kfree(elf_buffer);
+		return 0;
+	}
+
+	pml4_table_t *pml4 = create_new_pml4();
+
+	elf64_pheader_t *pheader = (elf64_pheader_t *)(elf_buffer + header->e_phoff);
+
+	for (uint16_t i = 0; i < header->e_phnum; i++) {
+		if (pheader[i].p_type == PT_LOAD) {
+			uint64_t mem_size = pheader[i].p_memsz;
+			uint64_t vaddr_start = pheader[i].p_vaddr;
+			uint64_t page_offset = vaddr_start % PAGE_SIZE;
+			uint64_t vaddr_page = vaddr_start - page_offset;
+			uint64_t total_size = mem_size + page_offset;
+
+			for (uint64_t offset = 0; offset < total_size; offset += PAGE_SIZE) {
+				void *phys_frame = pmm_alloc();
+				map_page(pml4, (vaddr_page + offset), 
+				(uint64_t)phys_frame, PTE_PRESENT|PTE_WRITABLE|PTE_USER);
+			}
+			uint64_t old_cr3;
+			kprintf("it is stuck here ?\n");
+			asm volatile("mov %%cr3, %0" : "=r"(old_cr3));
+            asm volatile("mov %0, %%cr3" :: "r"(create_new_pml4));
+			kprintf("nope\n");
+			kmemcpy((void*)vaddr_start, elf_buffer + pheader[i].p_offset, pheader[i].p_filesz);
+			if (pheader[i].p_memsz > pheader[i].p_filesz) {
+            	kmemset((void*)(vaddr_start + pheader[i].p_filesz), 0, pheader[i].p_memsz - pheader[i].p_filesz);
+            }
+			asm volatile("mov %0, %%cr3" :: "r"(old_cr3));
+		}
+	}
+	*task_pml4 = (uint64_t*)&pml4;
+	return header->e_entry;
+}
+
+task_t *create_elf_task(uint8_t *elf_buffer) {
+	uint64_t *task_pml4 = NULL;
+	uint64_t entry_point = load_elf_binary(elf_buffer, &task_pml4);
+	if (entry_point == 0) return  NULL;
+
+	task_t *new_task = (task_t *)pmm_alloc();
+	void *k_stack_raw = pmm_alloc();
+	uint64_t *stack_top = (uint64_t *)((uint64_t)k_stack_raw + PAGE_SIZE);
+	stack_top -=15;
+
+	stack_top--; *stack_top = entry_point;
+	new_task->kernel_stack_base = stack_top;
+	new_task->cr3 = (uint64_t)task_pml4;
+	new_task->vruntime = 0;
+	new_task->state = STATE_READY;
+	new_task->next = NULL;
+	return new_task;
+}
+
 
 int elf_load_and_run(const char* path){
 	vfs_node_t *file_node = vfs_finddir(vfs_root, path);
@@ -16,63 +84,7 @@ int elf_load_and_run(const char* path){
 	uint8_t *elf_buffer = (uint8_t *)kmalloc(file_node->size);
 	vfs_read(file_node, 0, file_node->size, elf_buffer);
 
-	elf64_header_t *header = (elf64_header_t *)elf_buffer;
-
-	if (*(uint32_t*) header->e_ident != ELF_MAGIC) {
-		kprintf("[ELF] Error loading ELF file: %s: Invalid magic", path);
-		kfree(elf_buffer);
-		return -1;
-	}
-
-	uint64_t process_cr3 = vmm_create_address_space();
-	pt_entry *process_pml4 = (pt_entry *)(process_cr3 + hhdm_offset);
-
-	elf64_pheader_t *pheader = (elf64_pheader_t *)(elf_buffer + header->e_phoff);
-	for (int i = 0; i < header->e_phnum; i++) {
-		if (pheader[i].p_type == PT_LOAD) {
-			uint64_t start_vaddr = pheader[i].p_vaddr;
-			uint64_t end_vaddr = start_vaddr + pheader[i].p_memsz;
-
-			uint64_t aligned_start = start_vaddr & ~(PAGE_SIZE - 1);
-			uint64_t aligned_end = (end_vaddr + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-
-			for (uint64_t v = aligned_start; v < aligned_end; v += PAGE_SIZE) {
-				void *phys_frame = pmm_alloc();
-				vmm_map(process_pml4, v, (uint64_t) phys_frame, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-				uint64_t page_offset_in_segment = 0;
-				if (v > start_vaddr) {
-					page_offset_in_segment = v - start_vaddr;
-				}
-
-				int64_t bytes_to_copy = pheader[i].p_filesz - page_offset_in_segment;
-				if (bytes_to_copy > (int64_t) PAGE_SIZE){
-					bytes_to_copy = PAGE_SIZE;
-				}
-				uint8_t *hhdm_dest = (uint8_t *)((uint64_t)phys_frame + hhdm_offset);
-				if (bytes_to_copy > 0) {
-					uint8_t *source_ptr = elf_buffer + pheader[i].p_offset + page_offset_in_segment;
-					kmemcpy(hhdm_dest, source_ptr, bytes_to_copy);
-					if (bytes_to_copy < (int64_t) PAGE_SIZE) {
-						kmemset(hhdm_dest + bytes_to_copy, 0, PAGE_SIZE-bytes_to_copy);
-					}
-				} else {
-					kmemset(hhdm_dest, 0, PAGE_SIZE);
-				}
-			}
-		}
-	}
-	
-	extern task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4, char *name);
-	extern task_t tasks[];
-	extern int nb_tasks;
-
-	kprintf("Loading %s, entry at %016lx\n", path, header->e_entry);
-
-
-	task_t* new_process = create_user_task((void(*)(void))header->e_entry, process_pml4, (char *)path);
-	new_process->cr3 = process_cr3;
-	new_process->state = TASK_STATE_RUNNING;
-
-	kfree(elf_buffer);
-	return 0;
+	task_t *new_task = create_elf_task(elf_buffer);
+	push_new_task(new_task);
+	return new_task->pid;
 }

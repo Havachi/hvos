@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "limine.h"
+#include "mem/paging.h"
 
 
 #define PAGE_SIZE		4096
@@ -29,6 +30,7 @@ extern uint64_t hhdm_offset;
 extern volatile pt_entry *current_pml4;
 extern uint64_t kernel_pml4_phys;
 extern uint64_t total_pages;
+extern uint64_t used_pages;
 extern uint64_t bitmap_size;
 extern uint8_t *bitmap;
 extern heap_header_t *heap_start;
@@ -40,7 +42,6 @@ void bitmap_clear(uint64_t page_index);
 int32_t bitmap_test(uint64_t page_index);
 
 /*heap.c*/
-
 void heap_init(volatile pt_entry *pml4);
 void heap_expand(uint64_t size_needed);
 
@@ -54,9 +55,15 @@ void *pmm_alloc();
 void pmm_free(void* addr);
 
 
+/* memmap.c */
+uint64_t memmap_get_total_pages(struct limine_memmap_response *memmap);
+void init_mem(struct limine_memmap_response* memmap);
+
+
 void display_memmap_debug (uint64_t nb_entries, struct limine_memmap_entry **entries);
-void init_mem(struct limine_memmap_response* memmap, uint64_t _hhdm_offset);
-void vmm_map(volatile pt_entry* pml4, uint64_t virt, uint64_t phys, uint64_t flags);
-uint64_t vmm_create_address_space(void);
+void map_page(pml4_table_t *pml4_virt, uint64_t vaddr, uint64_t paddr, uint64_t flags);
+pml4_table_t *create_new_pml4(void);
+
+uint64_t mem_frame_alloc(uint64_t len);
 
 #endif

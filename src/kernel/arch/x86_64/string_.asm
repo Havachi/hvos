@@ -1,14 +1,5 @@
 section .text
 
-global kmemset
-kmemset:
-    push rdi
-    mov rax, rsi
-    mov rcx, rdx
-    rep stosb
-    pop rax
-    ret
-    
 global kmemset32
 kmemset32:
     push rdi

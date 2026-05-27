@@ -2,17 +2,11 @@
 #define HVOS_MT_H
 
 #include <stdint.h>
+#include "kernel/intr.h"
+#include "kernel/scheduler/task.h"
 #include "mem/mem.h"
-#include "kernel/scheduler/task_state.h"
 
-typedef struct {
-	char name[64];
-	uint64_t rsp;
-	uint64_t kernel_stack_top;
-	uint64_t cr3;
-	uint32_t state;
-	int exit_code;
-} task_t;
+
 
 typedef struct {
     uint64_t rax;
@@ -37,6 +31,16 @@ typedef struct {
     uint64_t ss;
 } __attribute__((packed)) stack_frame_t;
 
+
+typedef struct {
+    task_t *current;
+    task_t *idle_task;
+    uint64_t ready_task_count;
+    task_t *ready_list;
+    uint64_t min_vruntime
+} cpu_task_list_t;
+
+
 uint64_t scheduler_c(uint64_t old_rsp);
 void init_multitasking();
 
@@ -44,8 +48,11 @@ task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4, char
 
 void create_test_task();
 
+void push_new_task(task_t *task);
+task_t *get_current_task();
+cpu_task_list_t *get_cpu_task_list();
 static inline void yield(void) {
-    asm volatile("int $0x30");
+    asm volatile("int %0"::"i"(INT_SCHEDULER));
 }
 
 #endif

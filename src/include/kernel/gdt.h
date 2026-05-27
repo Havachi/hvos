@@ -8,11 +8,6 @@
 #include "kernel/tss.h"
 
 typedef seg_descr_t gdt_desc_t;
-typedef struct {
-	gdt_desc_t gdtdesc;
-	uint32_t base_high;
-	uint32_t reserved;
-} __packed gdt_tss_desc_t;
 
 typedef struct {
 	uint16_t limit;
@@ -22,8 +17,7 @@ typedef struct {
 typedef struct {
 	gdt_ptr_t ptr;
 	__aligned(16) gdt_desc_t entries[GDT_ENTRIES];
-	gdt_tss_desc_t tss_entry;
-	__aligned(16) tss_t tss;
+	__aligned(16) tss_entry_t tss;
 } __packed gdt_t;
 
 void set_gdt_gate(gdt_desc_t *entry, uint32_t base, uint32_t limit, uint32_t flags);

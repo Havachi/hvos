@@ -1,9 +1,10 @@
 #ifndef HVOS_SCHEDULER_TASK__STATE_H
 #define HVOS_SCHEDULER_TASK__STATE_H
 
-#define TASK_STATE_RUNNING				0
-#define TASK_STATE_WAITING				1
-#define TASK_STATE_DEAD					2
-#define TASK_STATE_BLOCKED_ON_KEYBOARD 10
+#define STATE_NEW			0
+#define STATE_READY			1
+#define STATE_RUNNING		2
+#define STATE_WAITING		3
+#define STATE_DEAD			4
 
 #endif

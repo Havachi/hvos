@@ -1,6 +1,7 @@
 #include "klibc/string.h"
 #include "klibc/printf.h"
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 char buffer[33] = {0};
@@ -138,4 +139,41 @@ char *kstrncpy(char *s1, const char *s2, register size_t n) {
 	if (len < n)
 		kmemset(s1 +len, '\0', n - len);
 	return s1;
+}
+
+void *kmemset(void *s, int c, size_t n) {
+	uint8_t *sb = (uint8_t *)s;
+	uint8_t bc = (uint8_t )c;
+
+	while (n > 0 && ((uintptr_t)sb & 7) != 0) {
+		*sb++ = bc;
+		n--;
+	}
+
+	uint64_t wv = bc;
+	wv |= (wv << 8);
+	wv |= (wv << 16);
+	wv |= (wv << 32);
+	uint64_t* sw = (uint64_t *)sb;
+	while(n >= 32) {
+		sw[0] = wv;
+		sw[1] = wv;
+		sw[2] = wv;
+		sw[3] = wv;
+		sw += 4;
+		n -= 32;
+	}
+
+	while (n >= 8) {
+		*sw++ = wv;
+		n -= 8;
+	}
+
+	sb = (uint8_t *)sw;
+	while (n > 0) {
+		*sb++ = bc;
+		n--;
+	}
+
+	return s;
 }

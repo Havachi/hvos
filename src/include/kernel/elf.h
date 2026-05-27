@@ -37,6 +37,11 @@ typedef struct
     uint64_t p_align;
 }__attribute__((packed)) elf64_pheader_t ;
 
+typedef struct {
+    elf64_header_t *header;
+    elf64_pheader_t *pheader;
+}elf64_t;
+
 int elf_load_and_run(const char* path);
 
 #endif

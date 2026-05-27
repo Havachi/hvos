@@ -8,7 +8,6 @@ static char kdb_queue[KDB_BUFFER_SIZE];
 uint32_t kdb_head = 0;
 uint32_t kdb_tail = 0;
 
-extern void unblock_tasks(uint32_t);
 
 extern uintptr_t lapic_virt_base;
 bool key_pressed[128];
@@ -56,7 +55,6 @@ void keyboard_handler_c(void) {
 		}
 
 		append_to_input_buffer(c);
-		unblock_tasks(10);
 }
 
 char keyboard_get_char(void) {

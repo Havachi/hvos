@@ -1,7 +1,7 @@
 #ifndef HVOS_SYSCALL_H
 #define HVOS_SYSCALL_H
 
-#include "kernel/mt.h"
+#include "kernel/scheduler/mt.h"
 #include <stdint.h>
 
 #define MAX_FD          16

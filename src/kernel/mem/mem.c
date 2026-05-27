@@ -1,161 +1,230 @@
 #include "mem/mem.h"
-#include "mem/paging.h"
-#include "klibc/string.h"
+#include "kernel/boot.h"
 #include "klibc/printf.h"
+#include "klibc/string.h"
+#include "mem/paging.h"
+
+#include <stddef.h>
+#include <stdint.h>
 
 uint64_t total_pages;
+uint64_t used_pages;
+
+uint64_t kernel_page_map;
+extern uint8_t *bitmap;
+uint64_t bitmap_size;
+
+uint64_t hhdm_offset;
+
+static uint64_t top_ram;
+
+extern void kernel_start;
+extern void kernel_end;
+uint64_t kernel_size;
 
 heap_header_t *heap_start = NULL;
 uint64_t heap_current_limit = 0xffffa00000000000;
 
-uint64_t hhdm_offset;
-volatile pt_entry *current_pml4;
-uint64_t kernel_pml4_phys = 0;
+pml4_table_t *kernel_pml4;
 
-// Imported from your centralized boot_requests.c
-extern volatile struct limine_kernel_address_request kernel_address_request;
+#define PHYS_TO_VIRT(phys) ((phys) + hhdm_offset)
 
-
-
-static void *get_virt(uint64_t phys) {
-	return (void *)(phys + hhdm_offset);
+static uint64_t get_cr3() {
+    uint64_t cr3;
+    asm volatile("movq %%cr3, %0":"=r"(cr3));
+    return cr3;
 }
 
-void display_memmap_debug(uint64_t nb_entries, struct limine_memmap_entry **entries) {
-    kprintf("mem map (%d)\n", nb_entries);
-    kprintf("ID\t%-16s\t%-9s\tTYPE\n", "BASE", "SIZE");
-    for (int i = 0; i < nb_entries; i++) {
-        if (entries[i]->length == 0) continue;
-        kprintf("[%d]\t%016p\t%09x\t", i, entries[i]->base, entries[i]->length);
-        switch (entries[i]->type) {
-            case LIMINE_MEMMAP_USABLE:                 kprintf("USABLE"); break;
-            case LIMINE_MEMMAP_RESERVED:               kprintf("RESERVED"); break;
-            case LIMINE_MEMMAP_ACPI_RECLAIMABLE:       kprintf("ACPI_RECLAIMABLE"); break;
-            case LIMINE_MEMMAP_ACPI_NVS:               kprintf("ACPI_NVS"); break;
-            case LIMINE_MEMMAP_BAD_MEMORY:             kprintf("BAD_MEMORY"); break;
-            case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: kprintf("BOOTLOADER_RECLAIMABLE"); break;
-            case LIMINE_MEMMAP_KERNEL_AND_MODULES:     kprintf("EXECUTABLE_AND_MODULES"); break;
-            case LIMINE_MEMMAP_FRAMEBUFFER:            kprintf("FRAMEBUFFER"); break;
-            default:                                   kprintf("UNKNOWN"); break;
-        }
-        kprintf("\n");
-    }
+static void set_cr3(uint64_t cr3) {
+    asm volatile("movq %0, %%cr3"::"r"(cr3));
 }
 
-void vmm_map(volatile pt_entry* pml4, uint64_t virt, uint64_t phys, uint64_t flags) {
-    virtual_address_t *addr = (virtual_address_t *)&virt;
-    uint64_t pml4_idx = addr->pml4_index;
-    uint64_t pdpt_idx = addr->pdpt_index;
-    uint64_t pd_idx   = addr->pd_index;
-    uint64_t pt_idx   = addr->pt_index;
-
-    if (!(pml4[pml4_idx] & PTE_PRESENT)) {
-        uint64_t new_table = (uint64_t)pmm_alloc();
-        kmemset(get_virt(new_table), 0, PAGE_SIZE);
-        pml4[pml4_idx] = new_table | PTE_PRESENT | PTE_WRITABLE | PTE_USER;
-    }
-    pt_entry *pdpt = get_virt(pml4[pml4_idx] & PTE_ADDR_MASK);
-
-    if (!(pdpt[pdpt_idx] & PTE_PRESENT)) {
-        uint64_t new_table = (uint64_t)pmm_alloc();
-        kmemset(get_virt(new_table), 0, PAGE_SIZE);
-        pdpt[pdpt_idx] = new_table | PTE_PRESENT | PTE_WRITABLE | PTE_USER;
-    }
-    pt_entry* pd = get_virt(pdpt[pdpt_idx] & PTE_ADDR_MASK);
-
-    if (!(pd[pd_idx] & PTE_PRESENT)) {
-        uint64_t new_table = (uint64_t)pmm_alloc();
-        kmemset(get_virt(new_table), 0, PAGE_SIZE);
-        pd[pd_idx] = new_table | PTE_PRESENT | PTE_WRITABLE | PTE_USER;
-    }
-    pt_entry* pt = get_virt(pd[pd_idx] & PTE_ADDR_MASK);
-
-    pt[pt_idx] = phys | flags | PTE_PRESENT;
-    asm volatile("invlpg (%0)" :: "r"(virt) : "memory");
+static virtual_address_t *new_virt(uint64_t virt) {
+	virtual_address_t *virtaddr = (virtual_address_t *)virt;
+	return virtaddr;
 }
 
-void init_mem(struct limine_memmap_response* memmap, uint64_t _hhdm_offset) {
-    hhdm_offset = _hhdm_offset;
-    pmm_init(memmap);
-
-    uint64_t old_pml4_phys;
-    asm volatile("mov %%cr3, %0" : "=r"(old_pml4_phys));
-    pt_entry* old_pml4 = (pt_entry*)(old_pml4_phys + hhdm_offset);
-    kernel_pml4_phys = (uint64_t)pmm_alloc();
-    pt_entry* new_pml4 = (pt_entry*)(kernel_pml4_phys + hhdm_offset);
-    kmemset(new_pml4, 0, 4096);
-
-    for (int i = 256; i < 512; i++) new_pml4[i] = old_pml4[i];
-    for (int i = 0; i < 4; i++)    new_pml4[i] = old_pml4[i];
-
-    //LAPIC
-    vmm_map(new_pml4, 0xFEE00000 + hhdm_offset, 0xFEE00000, PTE_PRESENT | PTE_WRITABLE | PTE_NX);
-    //IO APIC
-    vmm_map(new_pml4, 0xFEC00000 + hhdm_offset, 0xFEC00000, PTE_PRESENT | PTE_WRITABLE | PTE_NX);
-    current_pml4 = new_pml4;
-
-    for (uint64_t i = 0; i < memmap->entry_count; i++) {
-        struct limine_memmap_entry *entry = memmap->entries[i];
-        if (entry->type != LIMINE_MEMMAP_USABLE &&
-            entry->type != LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE &&
-            entry->type != LIMINE_MEMMAP_KERNEL_AND_MODULES &&
-            entry->type != LIMINE_MEMMAP_FRAMEBUFFER) {
-            continue;
-        }
-
-        if (entry->type == LIMINE_MEMMAP_FRAMEBUFFER) {
-            uint64_t base_aligned = entry->base & ~(PAGE_SIZE - 1);
-            uint64_t length_aligned = (entry->length + (entry->base - base_aligned) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-            for (uint64_t j = 0; j < length_aligned; j += PAGE_SIZE) {
-                vmm_map(
-					new_pml4,
-					base_aligned + j + hhdm_offset,
-					base_aligned + j,
-					PTE_PRESENT | PTE_WRITABLE | PTE_NX | PTE_PCD | PTE_PWT
-				);
-            }
-            continue;
-        }
-
-        uint64_t rounded_len = (entry->length + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-        for (uint64_t j = 0; j < rounded_len; j += PAGE_SIZE) {
-            uint64_t phys = entry->base + j;
-            uint64_t virt = phys + hhdm_offset;
-            vmm_map(new_pml4, virt, phys, PTE_PRESENT | PTE_WRITABLE);
-        } 
-    }
-
-    struct limine_kernel_address_response *kaddr = kernel_address_request.response; 
-    uint64_t kphys = kaddr->physical_base;
-    uint64_t kvirt = kaddr->virtual_base;
-    uint64_t ksize = 0;
-    
-    for (uint64_t i = 0; i < memmap->entry_count; i++) {
-        struct limine_memmap_entry *entry = memmap->entries[i];
-        if (entry->type == LIMINE_MEMMAP_KERNEL_AND_MODULES && entry->base == kphys) {
-            ksize = entry->length;
-            break;
-        }
-    }
-    if (ksize == 0) ksize = 0x200000; 
-    for (uint64_t i = 0; i < ksize; i += PAGE_SIZE) {
-        vmm_map(new_pml4, kvirt + i, kphys + i, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-    }
-
-    asm volatile("mov %0, %%cr3" :: "r"(kernel_pml4_phys) : "memory");
-    heap_init(new_pml4);
+void memory_frame_set(uint64_t frame, uint64_t length) {
+	while (length > 0) {
+		if (frame % 8 == 0 && length >= 8) {
+			bitmap[frame / 8] = 0xFF;
+			frame += 8;
+			length -= 8;
+		} else {
+			bitmap[frame / 8] |= (1 << (7 - (frame % 8)));
+			frame++;
+			length--;
+		}
+	}
 }
 
-uint64_t vmm_create_address_space(void) {
-    uint64_t new_pml4_phys = (uint64_t) pmm_alloc();
-    pt_entry *new_pml4 = (pt_entry *)(new_pml4_phys + hhdm_offset);
+static uint64_t get_highest_phys_addr(struct limine_memmap_response *memmap) {
+	uint64_t max_addr = 0;
+	for (uint32_t i = 0; i < memmap->entry_count; i++) {
+		struct limine_memmap_entry *e = memmap->entries[i];
+		if (e->type == LIMINE_MEMMAP_USABLE){
+			if (e->base + e->length > max_addr)
+				max_addr = e->base + e->length;
+		}
+	}
+	return max_addr;
+}
 
-    kmemset(new_pml4, 0 , PAGE_SIZE);
-    extern uint64_t kernel_pml4_phys;
-    pt_entry *kernel_pml4 = (pt_entry *)(kernel_pml4_phys + hhdm_offset);
-    for (int i = 256; i < 512; i++) {
-        new_pml4[i] = kernel_pml4[i];
-    }
+void init_bitmap(struct limine_memmap_response *memmap) {
+	uint64_t max_addr = get_highest_phys_addr(memmap);
+	uint64_t pages = 0;
+	bitmap_size = (max_addr / PAGE_SIZE) / 8;
 
-    return new_pml4_phys;
+	for (uint32_t i = 0; i < memmap->entry_count; i++) {
+		struct limine_memmap_entry *e = memmap->entries[i];
+		if (e->type == LIMINE_MEMMAP_USABLE && e->length >= bitmap_size){
+			bitmap = (uint8_t *)(PHYS_TO_VIRT(e->base));
+			e->base += bitmap_size;
+			e->length -= bitmap_size;
+			break;
+		}
+	}
+	if (bitmap == NULL){
+		kprintf("FAILED TO ALLOCATE BITMAP");
+		for (;;){
+			asm volatile("hlt");
+		}
+	}
+	kmemset(bitmap, 1, bitmap_size);
+	for (uint32_t i = 0; i < memmap->entry_count; i++) {
+		struct limine_memmap_entry *e = memmap->entries[i];
+		if (e->type == LIMINE_MEMMAP_USABLE){
+			for (uint64_t addr = 0; addr < e->length; addr += PAGE_SIZE){
+				bitmap_clear((e->base + addr) / PAGE_SIZE);
+				pages++;
+			}
+		}
+	}
+	total_pages = pages;
+}
+
+
+uint64_t *alloc_page_table() {
+	uint64_t phys_addr = (uint64_t)pmm_alloc();
+	if (!phys_addr) return NULL;
+
+	uint64_t *virt_addr = (uint64_t *)PHYS_TO_VIRT(phys_addr);
+	kmemset(virt_addr, 0, 512);
+	return (uint64_t *)phys_addr;
+}
+
+///Map a Virtual address to a Physical Address
+void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, uint64_t flags) {
+		
+		virtual_address_t vaddr = {._raw = virt_addr_raw};
+
+		page_table_entry_t *pml4_entry = &pml4_virt->entries[vaddr.pml4_index]; 
+		if (!pml4_entry->present) {
+			uint64_t *new_table = alloc_page_table();
+			if (new_table == NULL) {
+				kprintf("KERNEL PANIC: Out of physical memory\n");
+				for(;;) asm volatile("hlt");
+			}
+			pml4_entry->present = 1;
+			pml4_entry->rw = 1;
+			pml4_entry->us = 0;
+			pml4_entry->address = (uint64_t)new_table >> 12;
+		}
+		pdpt_table_t *pdpt = (pdpt_table_t *)(uint64_t)PHYS_TO_VIRT(pml4_entry->address << 12);
+		page_table_entry_t *pdpt_entry = &pdpt->entries[vaddr.pdpt_index];
+
+		if (!pdpt_entry->present) {
+			uint64_t *new_table = alloc_page_table();
+			if (new_table == NULL) {
+				kprintf("KERNEL PANIC: Out of physical memory\n");
+				for(;;) asm volatile("hlt");
+			}
+			pdpt_entry->present = 1;
+			pdpt_entry->rw = 1;
+			pdpt_entry->us = 0;
+			pdpt_entry->address = (uint64_t)new_table >> 12;
+		}
+		pd_table_t *pd = (pd_table_t *)(uint64_t) PHYS_TO_VIRT(pdpt_entry->address << 12);
+		page_table_entry_t *pd_entry = &pd->entries[vaddr.pd_index];
+
+		if (!pd_entry->present) {
+			uint64_t *new_table = alloc_page_table();
+			if (new_table == NULL) {
+				kprintf("KERNEL PANIC: Out of physical memory\n");
+				for(;;) asm volatile("hlt");
+			}
+			pd_entry->present = 1;
+			pd_entry->rw = 1;
+			pd_entry->us = 0;
+			pd_entry->address = (uint64_t)new_table >> 12;
+		}
+
+		pt_table_t *pt = (pt_table_t *)(uint64_t) PHYS_TO_VIRT(pd_entry->address << 12);
+		page_table_entry_t *pt_entry = &pt->entries[vaddr.pt_index];
+		
+		pt_entry->present = 1;
+		pt_entry->rw = 1;
+		pt_entry->us = 0;
+		pt_entry->address = paddr >> 12;
+}
+///Map the whole usable ram
+static void map_ram(struct limine_memmap_response *memmap) {
+	for (uint32_t i = 0; i < memmap->entry_count; i++) {
+		struct limine_memmap_entry *e = memmap->entries[i];
+		if (e->type == LIMINE_MEMMAP_USABLE) {
+			uint64_t base = e->base;
+			uint64_t length = e->length;
+			for (uint64_t phys = base; phys < (base + length); phys += PAGE_SIZE) {
+				map_page(kernel_pml4, PHYS_TO_VIRT(phys), phys, PTE_WRITABLE);
+			}
+		}
+
+	}
+}
+
+static void map_kernel(uint64_t kpaddr, virtual_address_t *kvaddr, size_t ksize) {
+	for (uint64_t offset = 0; offset < ksize; offset += PAGE_SIZE) {
+		uint64_t paddr = kpaddr + offset;
+		map_page(kernel_pml4, (((uint64_t)kvaddr) + offset), paddr, PTE_WRITABLE);
+	}
+}
+
+pml4_table_t *create_new_pml4(void) {
+
+    pml4_table_t *pml4_phys = pmm_alloc();
+    pml4_table_t *pml4_virt = PHYS_TO_VIRT(pml4_phys);
+
+    kmemset(pml4_virt, 0, PAGE_SIZE);
+	kmemcpy(pml4_virt, kernel_pml4, PAGE_SIZE);
+    return pml4_virt;
+}
+
+
+void init_mem(struct limine_memmap_response *memmap) {
+	kernel_size = ((uint64_t)&kernel_end - (uint64_t)&kernel_start);
+	//Globally set hhdm offset for further uses
+	hhdm_offset = hhdm_request.response->offset;
+
+	init_bitmap(memmap);
+
+	/// INIT PAGING
+	kernel_pml4 = PHYS_TO_VIRT(pmm_alloc());
+	kmemset(kernel_pml4, 0, PAGE_SIZE);
+
+	map_ram(memmap);
+
+	uint64_t kernel_paddr = kernel_address_request.response->physical_base;
+	virtual_address_t *kernel_vaddr = (virtual_address_t*)kernel_address_request.response->virtual_base;
+	map_kernel(kernel_paddr, kernel_vaddr, kernel_size);
+
+	uint64_t rsp;
+	asm volatile("mov %%rsp, %0" : "=r"(rsp));
+	if (!(rsp >= hhdm_offset && rsp < (hhdm_offset + top_ram)) && !(rsp >= (uint64_t)kernel_vaddr && rsp < ((uint64_t) kernel_vaddr + kernel_size))){
+		//should map stack
+		kprintf("STACK NOT MAPPED !");
+		for(;;) {
+			asm volatile("hlt");
+		}
+	}
+
 }

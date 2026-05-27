@@ -4,9 +4,9 @@
 #include "kernel/idt.h"
 #include "kernel/intr.h"
 #include "kernel/isr.h"
+#include "kernel/scheduler/mt.h"
 #include "mem/mem.h"
 #include "kernel/acpi.h"
-#include "kernel/mt.h"
 #include "kernel/reg.h"
 #include "kernel/smp.h"
 #include "kernel/syscall.h"
@@ -16,6 +16,9 @@
 
 extern void keyboard_handler_c(void);
 extern char __bss_start, __bss_end;
+
+#define KERNEL_STACK_SIZE 16384
+uint8_t kernel_stack[KERNEL_STACK_SIZE] __aligned(16);
 
 void hcf(void) {
 	for (;;) {
@@ -58,24 +61,27 @@ void kbd_init(void) {
 
 void kernel_initialize(void) {
 	//memset(&__bss_start, 0, &__bss_end - &__bss_start);
-	//enable_sse();
+	enable_sse();
 	verify_boot_environment();
 	cli();
-	kbd_init();
 	init_fb();
-	init_mem(memmap_request.response, hhdm_request.response->offset);
+
+	init_mem(memmap_request.response);
 	vfs_init();
 	acpi_init();
 	init_gdt();
 	init_gdt_local();
+	tss_set_kernel_stack((uint64_t)kernel_stack + KERNEL_STACK_SIZE);
 	
 	intr_init();
 	init_syscall();
 	init_multitasking();
+	kprintf("multitasking enabled\n");
+	kbd_init();
+
 	sti();
 	
-	smp_init();
-
+	//smp_init();
 
 	//asm volatile("cli; hlt");
 

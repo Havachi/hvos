@@ -9,11 +9,18 @@ enum {
 	GATE_TASK = 0x5,
 };
 
+
+
 typedef struct seg_descr {
-	uint16_t	limit0;
-	uint16_t	base0;
-	uint16_t	base1, type: 4, s: 1, dpl: 2, p: 1;
-	uint16_t	limit1: 4, avl: 1, l: 1, d: 1, g: 1, base2: 8;
+	union {
+		struct {
+			uint16_t	limit0;
+			uint16_t	base0;
+			uint16_t	base1: 8, type: 4, s: 1, dpl: 2, p: 1;
+			uint16_t	limit1: 4, avl: 1, l: 1, d: 1, g: 1, base2: 8;
+		};
+		uint64_t _raw;
+	};
 }__packed seg_descr_t;
 
 struct desc_ptr {

@@ -1,8 +1,22 @@
 #include "mem/mem.h"
 
-uint8_t *bitmap;
-uint64_t bitmap_size;
+#ifdef BIG_BITMAP
+uint32_t *bitmap;
+void bitmap_set(uint64_t page_index) {
+	bitmap[(page_index / 32)] |= (1 << (page_index % 32));
+}
 
+void bitmap_clear(uint64_t page_index) {
+	bitmap[(page_index / 32)] &= ~(1 << (page_index % 32));
+}
+
+int32_t bitmap_test(uint64_t page_index) {
+	return bitmap[(page_index / 32)] & (1 << (page_index % 32));
+}
+
+#else
+
+uint8_t *bitmap;
 void bitmap_set(uint64_t page_index) {
 	bitmap[(page_index / 8)] |= (1 << (page_index % 8));
 }
@@ -12,6 +26,9 @@ void bitmap_clear(uint64_t page_index) {
 }
 
 int32_t bitmap_test(uint64_t page_index) {
-	return (bitmap[(page_index / 8)] >> (page_index % 8)) & 1;
+	return (bitmap[(page_index / 8)] & (1 << (page_index % 8)));
 }
+#endif
+
+
 

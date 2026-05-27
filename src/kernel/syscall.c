@@ -1,14 +1,13 @@
 #include "kernel/syscall.h"
+#include "kernel/scheduler/task_state.h"
 #include "klibc/printf.h"
 #include "kernel/vfs.h"
-#include "kernel/mt.h"
 #include "kernel/syscall_id.h"
 #include "kernel/elf.h"
 #include "kernel/elf.h"
 
 static vfs_node_t* open_files[MAX_FD] = {NULL};
 extern task_t tasks[];
-extern int current_task;
 
 extern char keyboard_get_char(void);
 
@@ -52,7 +51,8 @@ int sys_read(int fd, uint8_t *buffer, uint32_t size) {
 		while (bytes_read < size) {
 			char c = keyboard_get_char();
 			if (c == 0) {
-				tasks[current_task].state = TASK_STATE_BLOCKED_ON_KEYBOARD;
+				task_t *current_task = get_current_task();
+				current_task->state = STATE_WAITING;
 				yield();
 				continue;
 			}
@@ -83,10 +83,10 @@ void sys_print(const char *str) {
 }
 
 void sys_exit(int code) {
-	kprintf("\n[KERNEL] process %d exited with code: %d\n", current_task, code);
-	tasks[current_task].state = TASK_STATE_DEAD;
-	tasks[current_task].exit_code = code;
-	asm volatile("int $0x20");
+	task_t *ct = get_current_task();
+	kprintf("\n[KERNEL] process %d exited with code: %d\n", ct->pid, code);
+	ct->state = STATE_DEAD;
+	asm volatile("int $0x30");
 }
 
 int sys_exec(const char *path) {

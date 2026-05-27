@@ -4,7 +4,6 @@
 #include "kernel/boot.h"
 #include "kernel/video.h"
 #include "kernel/elf.h"
-#include "kernel/mt.h"
 #include "klibc/printf.h"
 
 struct limine_framebuffer *fb = NULL;
@@ -36,10 +35,10 @@ void kmain(void) {
 	print_available_ram(ram_bytes);
     kprintf("CPU with %d core\n", g_acpi_cpu_count);
     kprintf("loading shell\n");
+
+
 	elf_load_and_run("shell.elf");
 	//create_test_task();
-    for (;;) {
-        yield();
-    }
+
 	hcf();
 }

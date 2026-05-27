@@ -59,9 +59,10 @@ void pmm_init(struct limine_memmap_response* memmap) {
 
 void *pmm_alloc() {
 	uint64_t flags = safe_lock(&pmm_lock);
-	for (uint64_t i = 0; i < total_pages; i++) {
+	for (uint64_t i = 1; i < total_pages; i++) {
 		if (!bitmap_test(i)) {
 			bitmap_set(i);
+			used_pages++;
 			safe_unlock(&pmm_lock, flags);
 			return (void*) (i * PAGE_SIZE);
 		}
@@ -73,6 +74,9 @@ void *pmm_alloc() {
 void pmm_free(void* addr) {
 	uint64_t flags = safe_lock(&pmm_lock);
 	uint64_t page_index = (uint64_t)addr / PAGE_SIZE;
-	bitmap_clear(page_index);
+	if (bitmap_test(page_index)) {
+		bitmap_clear(page_index);
+		used_pages--;
+	}
 	safe_unlock(&pmm_lock, flags);
 }

@@ -1,13 +1,21 @@
-#include "kernel/mt.h"
 #include "asm/segment.h"
+#include "kernel/acpi.h"
 #include "kernel/scheduler/task_state.h"
 #include "klibc/printf.h"
 #include "klibc/string.h"
-#include <string.h>
+#include "kernel/sync.h"
 
 task_t tasks[3];
 int current_task = 0;
 int nb_tasks = 0;
+
+cpu_task_list_t **cpu_task_list;
+
+safe_lock_t id_lock = {0};
+
+task_t *current_task_tcb;
+
+task_t bsp_main_task;
 
 static uint8_t idle_task_stack[PAGE_SIZE] __attribute__((aligned(16)));
 uint64_t current_task_syscall_stack;
@@ -21,7 +29,7 @@ void idle_task_entry(void) {
 
 uint64_t scheduler_c(uint64_t old_rsp) {
 	if (tasks[current_task].state == TASK_STATE_RUNNING) {
-		tasks[current_task].rsp = old_rsp;
+		tasks[current_task].k_rsp = old_rsp;
 	}
 
 	int starting_task = current_task;
@@ -54,7 +62,7 @@ uint64_t scheduler_c(uint64_t old_rsp) {
 	tss_set_kernel_stack(safe_kernel_stack);
 	current_task_syscall_stack = safe_kernel_stack;
 
-	return tasks[current_task].rsp;
+	return tasks[current_task].k_rsp;
 }
 
 task_t *create_task(void (*entry_point)(void)) {
@@ -73,7 +81,7 @@ task_t *create_task(void (*entry_point)(void)) {
 	frame->rsp = (uint64_t) stack_top;
 	frame->rflags = 0x202;
 
-	task->rsp = (uint64_t)frame;
+	task->k_rsp = (uint64_t)frame;
 	task->cr3 = kernel_pml4_phys;
 	task->state = TASK_STATE_RUNNING;
 	task->kernel_stack_top = (uint64_t)stack_top;
@@ -102,6 +110,8 @@ pt_entry* create_process_page_table(void) {
 
 void init_multitasking() {
 	//KERNEL TASK
+	bsp_main_task.kernel_stack_base = NULL;
+	
 	tasks[0].cr3 = kernel_pml4_phys;
 	tasks[0].state = TASK_STATE_RUNNING;
 	
@@ -116,7 +126,7 @@ void init_multitasking() {
     frame->rsp = (uint64_t)idle_stack_top;
     frame->rflags = 0x202;
 
-	tasks[0].rsp = (uint64_t)frame;
+	tasks[0].k_rsp = (uint64_t)frame;
 
 	current_task = 0;
 	nb_tasks = 1;
@@ -136,7 +146,7 @@ task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4, char
 	uint64_t user_stack_virt_top = 0x00007FFFFFFFF000;
 	uint64_t user_stack_virt_base = user_stack_virt_top - PAGE_SIZE;
 
-	vmm_map(process_pml4, user_stack_virt_base, (uint64_t) u_stack_phys,
+	map_page(process_pml4, user_stack_virt_base, (uint64_t) u_stack_phys,
 		PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
 	uint64_t hhdm_stack_top = (uint64_t) u_stack_phys + hhdm_offset + PAGE_SIZE;
@@ -151,7 +161,7 @@ task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4, char
 	frame->rflags = 0x202;
 
 
-	task->rsp = (uint64_t)frame;
+	task->k_rsp = (uint64_t)frame;
 	task->cr3 = (uint64_t)process_pml4;
 	task->state = TASK_STATE_RUNNING;
 	 
@@ -180,4 +190,12 @@ void unblock_tasks(uint32_t state) {
 			tasks[i].state = TASK_STATE_RUNNING;
 		}
 	}
+}
+
+
+
+void init_bsp(){
+	safe_lock(&id_lock);
+	uint32_t nb_proc = g_acpi_cpu_count;
+	cpu_task_list = (cpu_task_list_t**)kmalloc(sizeof(cpu_task_list_t) * nb_proc);
 }

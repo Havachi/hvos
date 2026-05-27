@@ -1,3 +1,5 @@
+default rel
+
 global rdmsr
 rdmsr:
     mov ecx, edi
@@ -39,9 +41,9 @@ timer_handler_asm:
     push r14
     push r15
 
-    mov rdi, rsp
-    call scheduler_c
-    mov rsp, rax
+	mov rdi, rsp
+	call scheduler_c
+	mov rsp, rax
     
     pop r15
     pop r14

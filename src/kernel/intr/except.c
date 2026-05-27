@@ -1,4 +1,6 @@
 #include "kernel/except.h"
+#include "kernel/scheduler/mt.h"
+#include "klibc/printf.h"
 #include <stdint.h>
 
 static const char *s_exceptionDesc[20] =
@@ -47,12 +49,39 @@ void exception_dump(register_t regs)
     for (;;) {}
 }
 
-void page_fault_handler_c(uint64_t err){
-    kprintf("PAGEFAULT! err: %x\n", err);
-    for(;;){
-        asm volatile("hlt");
-    }
+void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
+    kprintf("\n=== PAGE FAULT ===\n");
+    kprintf("Faulting address (CR2):\t%016lx\n", cr2);
+    kprintf("Error code:            \t%08lx\n", f->error_code);
+
+    kprintf("Cause: %s %s in %s mode%s%s\n",
+        (f->error_code & PF_PRESENT)  ? "protection violation" : "not present",
+        (f->error_code & PF_WRITE)    ? "on write"             : "on read",
+        (f->error_code & PF_USER)     ? "user"                 : "kernel",
+        (f->error_code & PF_RESERVED) ? " [reserved bit set]"  : "",
+        (f->error_code & PF_FETCH)    ? " [instruction fetch]" : ""
+    );
+
+    kprintf("\nRegisters:\n");
+    kprintf("  rip\t%016lx\tcs\t%04lx\trflags\t%016lx\n",
+            f->rip, f->cs, f->rflags);
+    kprintf("  rsp\t%016lx\tss\t%04lx\n",
+            f->rsp, f->ss);
+    kprintf("  rax\t%016lx\trbx\t%016lx\trcx\t%016lx\n",
+            f->rax, f->rbx, f->rcx);
+    kprintf("  rdx\t%016lx\trsi\t%016lx\trdi\t%016lx\n",
+            f->rdx, f->rsi, f->rdi);
+    kprintf("  rbp\t%016lx\tr8\t%016lx\tr9\t%016lx\n",
+            f->rbp, f->r8,  f->r9);
+    kprintf("  r10\t%016lx\tr11\t%016lx\tr12\t%016lx\n",
+            f->r10, f->r11, f->r12);
+    kprintf("  r13\t%016lx\tr14\t%016lx\tr15\t%016lx\n",
+            f->r13, f->r14, f->r15);
+
+    kprintf("\nSystem halted.\n");
+    for (;;) asm volatile("hlt");
 }
+
 void gpf_execption_handler_c(uint64_t rip, uint64_t err) {
     gf_error_code_t err_code = {0};
     err_code._raw = err;

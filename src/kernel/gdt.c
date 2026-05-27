@@ -18,7 +18,7 @@ static void set_gdt_tss_gate (gdt_desc_t* entry, uint64_t base, uint64_t limit) 
 	gdt_desc_t *tss_1 = entry;
 	gdt_desc_t *tss_2 = entry + 1;
 	kmemset(tss_1, 0, sizeof(gdt_desc_t));
-	kmemset(tss_1, 0, sizeof(gdt_desc_t));
+	kmemset(tss_2, 0, sizeof(gdt_desc_t));
 
 	tss_1->limit0 = limit & 0xFFFF;
 	tss_1->base0 = base & 0xFFFF;
@@ -62,12 +62,11 @@ void set_gdt_gate(gdt_desc_t *entry, uint32_t base, uint32_t limit, uint32_t fla
 
 void init_gdt(){
 	uint32_t cores = g_acpi_cpu_count;
-	gdt_list = (gdt_t **) kmalloc(sizeof(gdt_t) * cores);
+	gdt_list = (gdt_t **) kmalloc(sizeof(gdt_t *) * cores);
 	for (uint32_t i = 0; i < cores; i++) {
-		size_t size = sizeof(gdt_t) * 2;
-		void *gdt_mem = kmalloc(size);
-		kmemset(gdt_mem, 0, size);
-		gdt_list[i] = (gdt_t *) ALIGN_BOUND((uint64_t)gdt_mem, 0x10);
+		void *gdt_mem = kmalloc(sizeof(gdt_t) + 0x10);
+		kmemset(gdt_mem, 0, sizeof(gdt_t) + 0x10);
+		gdt_list[i] = (gdt_t *)gdt_mem;
 	}
 }
 
@@ -80,8 +79,10 @@ void tss_set_kernel_stack(uint64_t stack_ptr) {
 void init_gdt_local(){
 
 	gdt_t *local_gdt = gdt_list[local_apic_get_id()];
-	local_gdt->ptr.limit = GDT_SIZE - 1;
-	local_gdt->ptr.base = (uint64_t)&local_gdt->entries;
+	gdt_ptr_t ptr = {
+		.limit = sizeof(local_gdt->entries) - 1,
+		.base = (uint64_t)&local_gdt->entries[0],
+	};
 
 	set_gdt_gate(&local_gdt->entries[0],0,0,0);
 	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_KERNEL_CS],0,0xFFFFFFFF,DESC_CODE64);
@@ -89,26 +90,31 @@ void init_gdt_local(){
 	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_DEFAULT_USER_DS],0,0xFFFFFFFF,DESC_DATA64 | DESC_USER);
 	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_DEFAULT_USER_CS],0,0xFFFFFFFF,DESC_CODE64 | DESC_USER);
 
-
-	set_gdt_tss_gate(&local_gdt->entries[GDT_ENTRY_TSS], (uint64_t) &local_gdt->tss, sizeof(tss_entry_t));
 	kmemset(&local_gdt->tss, 0, sizeof(tss_entry_t));
-	local_gdt->tss.rsp0 = 0;
+	set_gdt_tss_gate(&local_gdt->entries[GDT_ENTRY_TSS],
+		(uint64_t)&local_gdt->tss,
+		sizeof(tss_entry_t) - 1
+	);
+	asm volatile("lgdt %0" : : "m" (ptr): "memory");
 
-	asm volatile("lgdt %0" : : "m" (local_gdt->ptr));
 	asm volatile(
-		"movw %0, %%ax;"
-		"movw %%ax, %%ds;"
-		"movw %%ax, %%es;"
-		"movw %%ax, %%fs;"
-		"movw %%ax, %%gs;"
-		"movw %%ax, %%ss;"
-		"pushq %1;"
-		"pushq $reloadcs;"
-		"lretq;"
-		"reloadcs:"
-		 : : "i"(__KERNEL_DS), "i"(__KERNEL_CS): "ax", "memory");
+		"movw %0, %%ax\n"
+		"movw %%ax, %%ds\n"
+		"movw %%ax, %%es\n"
+		"movw %%ax, %%fs\n"
+		"movw %%ax, %%gs\n"
+		"movw %%ax, %%ss\n"
+		"pushq %1\n"
+		"lea 1f(%%rip), %%rax\n"
+		"pushq %%rax\n"
+		"lretq\n"
+		"1:\n"
+		: : "i"(__KERNEL_DS), "i"(__KERNEL_CS) : "rax", "memory"
+	);
+
 	asm volatile(
-		"mov %0, %%ax;"
-		"ltr %%ax;"
-		::"i"(__TSS_SEG) : "memory");
+		"mov %0, %%ax\n"
+		"ltr %%ax\n"
+		: : "i"(__TSS_SEG) : "ax", "memory"
+	);
 }

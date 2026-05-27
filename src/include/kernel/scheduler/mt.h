@@ -16,6 +16,7 @@ typedef struct {
     uint64_t rsi;
     uint64_t rdi;
     uint64_t rbp;
+	
     uint64_t r8;
     uint64_t r9;
     uint64_t r10;
@@ -24,6 +25,7 @@ typedef struct {
     uint64_t r13;
     uint64_t r14;
     uint64_t r15;
+
     uint64_t rip;
     uint64_t cs;
     uint64_t rflags;
@@ -37,7 +39,7 @@ typedef struct {
     task_t *idle_task;
     uint64_t ready_task_count;
     task_t *ready_list;
-    uint64_t min_vruntime
+    uint64_t min_vruntime;
 } cpu_task_list_t;
 
 

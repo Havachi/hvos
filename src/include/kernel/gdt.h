@@ -18,7 +18,7 @@ typedef struct {
 	gdt_ptr_t ptr;
 	__aligned(16) gdt_desc_t entries[GDT_ENTRIES];
 	__aligned(16) tss_entry_t tss;
-} __packed gdt_t;
+} gdt_t;
 
 void set_gdt_gate(gdt_desc_t *entry, uint32_t base, uint32_t limit, uint32_t flags);
 void init_gdt();

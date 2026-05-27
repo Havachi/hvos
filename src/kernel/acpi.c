@@ -5,6 +5,7 @@
 #include "kernel/io_apic.h"
 #include "kernel/print.h"
 #include "klibc/string.h"
+#include <stdint.h>
 
 #ifdef PRINTV
 #undef 	PRINTV
@@ -44,6 +45,10 @@ static void acpi_parse_apic(acpi_madt_t *madt) {
 	s_madt = madt;
 
 	uint32_t local_apic_phys = madt->local_apic_address;
+	map_page(kernel_pml4, (uint64_t)PHYS_TO_VIRT(local_apic_phys), local_apic_phys, PTE_PRESENT | PTE_WRITABLE | PTE_PCD);
+	g_local_apic_address = (uint8_t *)(uintptr_t)(PHYS_TO_VIRT(local_apic_phys));
+
+
 	uint32_t madt_len = madt->header.length;
 	PRINTV("Local APIC Address = %016lx\n", local_apic_phys);
 	g_local_apic_address = (uint8_t *) (uintptr_t)(madt->local_apic_address + hhdm_offset);
@@ -71,8 +76,10 @@ static void acpi_parse_apic(acpi_madt_t *madt) {
 				break;
 			case APIC_TYPE_IO_APIC:
 				ioapic = (madt_iopic_t *)current_entry;
+				uint64_t ioapic_phys = (uint64_t)ioapic->io_apic_address;
+				map_page(kernel_pml4, PHYS_TO_VIRT(ioapic_phys), ioapic_phys, PTE_PRESENT | PTE_WRITABLE | PTE_PCD);
+				g_io_apic_addr = (uint8_t *)(PHYS_TO_VIRT(ioapic_phys));
 				kprintf("Found I/O APIC - ID: %d, Address: %016lx, GSI Base: %d\n", ioapic->io_apic_id, ioapic->io_apic_address, ioapic->global_system_interrupt_base);
-				g_io_apic_addr = (uint8_t *)(ioapic->io_apic_address + hhdm_offset);
 				break;
 			case APIC_TYPE_INTERRUPT_OVERRIDE:
 				iso = (madt_iso_t *) current_entry;

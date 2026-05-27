@@ -15,7 +15,7 @@
 #define PTE_PCD			(1ULL << 4)
 #define PTE_NX			(1ULL << 63)
 #define PTE_ADDR_MASK	0x000ffffffffff000
-#define TO_VIRT(phys)	((void *)((uint64_t)(phys) + hhdm_offset))
+#define PHYS_TO_VIRT(phys) ((uint64_t)(phys) + hhdm_offset)
 
 typedef struct heap_header_s {
 	uint64_t size;
@@ -26,15 +26,14 @@ typedef struct heap_header_s {
 
 typedef uint64_t pt_entry;
 
-extern uint64_t hhdm_offset;
-extern volatile pt_entry *current_pml4;
-extern uint64_t kernel_pml4_phys;
-extern uint64_t total_pages;
-extern uint64_t used_pages;
-extern uint64_t bitmap_size;
-extern uint8_t *bitmap;
-extern heap_header_t *heap_start;
-extern uint64_t heap_current_limit;
+extern uint64_t			hhdm_offset;
+extern pml4_table_t		*kernel_pml4;
+extern uint64_t 		total_pages;
+extern uint64_t 		used_pages;
+extern uint64_t 		bitmap_size;
+extern uint8_t			*bitmap;
+extern heap_header_t	*heap_start;
+extern uint64_t			heap_current_limit;
 
 /*bitmap.c*/
 void bitmap_set(uint64_t page_index);
@@ -42,7 +41,7 @@ void bitmap_clear(uint64_t page_index);
 int32_t bitmap_test(uint64_t page_index);
 
 /*heap.c*/
-void heap_init(volatile pt_entry *pml4);
+void heap_init();
 void heap_expand(uint64_t size_needed);
 
 /*kmalloc.c*/
@@ -56,14 +55,8 @@ void pmm_free(void* addr);
 
 
 /* memmap.c */
-uint64_t memmap_get_total_pages(struct limine_memmap_response *memmap);
 void init_mem(struct limine_memmap_response* memmap);
-
-
-void display_memmap_debug (uint64_t nb_entries, struct limine_memmap_entry **entries);
 void map_page(pml4_table_t *pml4_virt, uint64_t vaddr, uint64_t paddr, uint64_t flags);
 pml4_table_t *create_new_pml4(void);
-
-uint64_t mem_frame_alloc(uint64_t len);
 
 #endif

@@ -2,6 +2,7 @@
 #include "kernel/boot.h"
 #include "klibc/printf.h"
 #include "klibc/string.h"
+#include "limine.h"
 #include "mem/paging.h"
 
 #include <stddef.h>
@@ -27,7 +28,6 @@ uint64_t heap_current_limit = 0xffffa00000000000;
 
 pml4_table_t *kernel_pml4;
 
-#define PHYS_TO_VIRT(phys) ((phys) + hhdm_offset)
 
 static uint64_t get_cr3() {
     uint64_t cr3;
@@ -62,10 +62,9 @@ static uint64_t get_highest_phys_addr(struct limine_memmap_response *memmap) {
 	uint64_t max_addr = 0;
 	for (uint32_t i = 0; i < memmap->entry_count; i++) {
 		struct limine_memmap_entry *e = memmap->entries[i];
-		if (e->type == LIMINE_MEMMAP_USABLE){
-			if (e->base + e->length > max_addr)
-				max_addr = e->base + e->length;
-		}
+		if (e->type == LIMINE_MEMMAP_RESERVED) continue;
+		if (e->base + e->length > max_addr)
+			max_addr = e->base + e->length;
 	}
 	return max_addr;
 }
@@ -90,7 +89,7 @@ void init_bitmap(struct limine_memmap_response *memmap) {
 			asm volatile("hlt");
 		}
 	}
-	kmemset(bitmap, 1, bitmap_size);
+	kmemset(bitmap, 0xFF, bitmap_size);
 	for (uint32_t i = 0; i < memmap->entry_count; i++) {
 		struct limine_memmap_entry *e = memmap->entries[i];
 		if (e->type == LIMINE_MEMMAP_USABLE){
@@ -109,7 +108,7 @@ uint64_t *alloc_page_table() {
 	if (!phys_addr) return NULL;
 
 	uint64_t *virt_addr = (uint64_t *)PHYS_TO_VIRT(phys_addr);
-	kmemset(virt_addr, 0, 512);
+	kmemset(virt_addr, 0, PAGE_SIZE);
 	return (uint64_t *)phys_addr;
 }
 
@@ -171,14 +170,12 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 static void map_ram(struct limine_memmap_response *memmap) {
 	for (uint32_t i = 0; i < memmap->entry_count; i++) {
 		struct limine_memmap_entry *e = memmap->entries[i];
-		if (e->type == LIMINE_MEMMAP_USABLE) {
-			uint64_t base = e->base;
-			uint64_t length = e->length;
-			for (uint64_t phys = base; phys < (base + length); phys += PAGE_SIZE) {
-				map_page(kernel_pml4, PHYS_TO_VIRT(phys), phys, PTE_WRITABLE);
-			}
+		if (e->type == LIMINE_MEMMAP_RESERVED) continue;
+		uint64_t base = e->base;
+		uint64_t length = e->length;
+		for (uint64_t phys = base; phys < (base + length); phys += PAGE_SIZE) {
+			map_page(kernel_pml4, PHYS_TO_VIRT(phys), phys, PTE_WRITABLE);
 		}
-
 	}
 }
 
@@ -191,8 +188,8 @@ static void map_kernel(uint64_t kpaddr, virtual_address_t *kvaddr, size_t ksize)
 
 pml4_table_t *create_new_pml4(void) {
 
-    pml4_table_t *pml4_phys = pmm_alloc();
-    pml4_table_t *pml4_virt = PHYS_TO_VIRT(pml4_phys);
+    uint64_t pml4_phys = (uint64_t)pmm_alloc();
+    pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(pml4_phys);
 
     kmemset(pml4_virt, 0, PAGE_SIZE);
 	kmemcpy(pml4_virt, kernel_pml4, PAGE_SIZE);
@@ -201,15 +198,20 @@ pml4_table_t *create_new_pml4(void) {
 
 
 void init_mem(struct limine_memmap_response *memmap) {
-	kernel_size = ((uint64_t)&kernel_end - (uint64_t)&kernel_start);
 	//Globally set hhdm offset for further uses
 	hhdm_offset = hhdm_request.response->offset;
+	top_ram = get_highest_phys_addr(memmap);
+	kernel_size = ((uint64_t)&kernel_end - (uint64_t)&kernel_start);
 
 	init_bitmap(memmap);
 
-	/// INIT PAGING
-	kernel_pml4 = PHYS_TO_VIRT(pmm_alloc());
-	kmemset(kernel_pml4, 0, PAGE_SIZE);
+	uint64_t old_cr3 = get_cr3() & ~(uint64_t)0xFFF;
+	pml4_table_t *old_pml4 = (pml4_table_t *)PHYS_TO_VIRT(old_cr3);
+
+	uint64_t new_pml4_phys = (uint64_t)pmm_alloc();
+	kernel_pml4 = (pml4_table_t *)PHYS_TO_VIRT(new_pml4_phys);
+
+	kmemcpy(kernel_pml4, old_pml4, PAGE_SIZE);
 
 	map_ram(memmap);
 
@@ -226,5 +228,6 @@ void init_mem(struct limine_memmap_response *memmap) {
 			asm volatile("hlt");
 		}
 	}
-
+	set_cr3((uint64_t)new_pml4_phys);
+	heap_init();
 }

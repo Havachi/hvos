@@ -1,6 +1,7 @@
 #include "kernel/syscall.h"
 #include "kernel/scheduler/task_state.h"
 #include "kernel/sync.h"
+#include "kernel/video.h"
 #include "klibc/printf.h"
 #include "kernel/vfs.h"
 #include "kernel/syscall_id.h"
@@ -83,7 +84,11 @@ int sys_write(int fd, uint8_t *buffer, uint32_t size) {
 	if (buffer == NULL || size == 0) return -1;
 	if (fd == 1) {
 		for (uint32_t i = 0; i < size; i++) {
-			kprintf("%c", buffer[i]);
+			if (buffer[i] == 0x02){
+				clear_screen();
+			} else {
+				kprintf("%c", buffer[i]);
+			}
 		}
 		return size;
 	}

@@ -54,6 +54,20 @@ void keyboard_handler_c(void) {
 			return;
 		}
 		char c;
+
+		if (key_pressed[LCTRL]) {
+			c = normal_scan_code_table[scancode];
+			if (c == 'c') {
+				append_to_input_buffer(CANCEL);
+				return;
+
+			}
+			if (c == 'l') {
+				append_to_input_buffer(CLEAR);
+				return;
+			}
+		}
+
 		if (key_pressed[LSHIFT] || key_pressed[RSHIFT]) {
 			c = shift_scan_code_table[scancode];
 		} else {

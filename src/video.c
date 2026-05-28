@@ -6,8 +6,8 @@ static const uint32_t font_width = 8;
 static const uint32_t font_height = 16;
 
 const uint32_t term_margin = 10;
-static uint32_t line = 1;
-static uint32_t col = 1;
+static uint32_t line = 0;
+static uint32_t col = 0;
 static uint32_t max_col;
 static uint32_t max_line;
 const uint32_t tab_space = 8;
@@ -68,7 +68,7 @@ void draw_glyph(uint32_t x, uint32_t y, uint32_t fgc, uint32_t bgc, char *g) {
     
     for (size_t dy = 0; dy < target_height; ++dy) {
         size_t src_y = (dy * 16) / target_height;
-        const uint8_t *row = g + src_y * stride;
+        const uint8_t *row = (const uint8_t *)g + src_y * stride;
         for (size_t dx = 0; dx < target_width; ++dx) {
             size_t src_x = (dx * 8) / target_width;
             size_t byte_index = src_x >> 3;
@@ -184,8 +184,8 @@ void clear_screen() {
             row[x] = BLACK;
         }
     }
-	col = 1;
-	line = 1;
+	col = 0;
+	line = 0;
 }
 
 void init_fb() {

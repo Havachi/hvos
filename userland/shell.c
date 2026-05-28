@@ -1,7 +1,7 @@
 #include "hvos.h"
 
 static char input_buffer[128];
-static char history_buffer[10][128];
+static char history_buffer[100][128];
 static int index = 0;
 static int history_index = 0;
 
@@ -24,6 +24,7 @@ void clear_buffer() {
 		input_buffer[index--] = '\0';
 	}
 	input_buffer[0] = '\0';
+	index = 0;
 }
 
 
@@ -45,6 +46,14 @@ void _start(void) {
 					input_buffer[index] = '\0';
 					user_print("\b");
 				}
+			} else if (c == CLEAR) {
+				clear_screen();
+				clear_buffer();
+				break;
+			} else if (c == CANCEL) {
+				clear_buffer();
+				user_print("\n");
+				break;
 			} else if(index < 127) {
 				input_buffer[index++] = c;
 				write(1, &c, 1);

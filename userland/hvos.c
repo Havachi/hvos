@@ -44,6 +44,12 @@ int exec(const char* path) {
 	return result;
 }
 
+void clear_screen() {
+	int res; 
+	char buf[2] = {CLEAR, 0x00 };
+    asm volatile("syscall" : "=a"(res) : "a"(SC_WRITE), "D"(1), "S"(buf), "d"(2) : "rcx", "r11", "memory");
+}
+
 void user_print(const char *str) {
 	int len = 0;
 	while (str[len]) len++;

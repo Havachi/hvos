@@ -9,6 +9,10 @@
 #define BACKSPACE 0x0E
 #define LSHIFT 0x2A
 #define RSHIFT 0x36
+#define LCTRL 0x1D
 #define KDB_BUFFER_SIZE 256
+
+#define CANCEL 0x18
+#define CLEAR 0x02
 
 #endif

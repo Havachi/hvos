@@ -16,6 +16,9 @@
 #define SC_EXIT			60
 #define SC_UPRINT		99
 
+#define CANCEL 0x18
+#define CLEAR  0x02
+
 int open(const char* path);
 int read(int fd, void* buffer, uint32_t size);
 int write(int fd, const void* buffer, uint32_t size);
@@ -26,6 +29,7 @@ void yield(void);
 // Basic userland utility
 void user_print(const char* message);
 void user_printerr(const char *str);
+void clear_screen();
 
 
 #endif

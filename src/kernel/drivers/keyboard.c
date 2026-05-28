@@ -38,7 +38,7 @@ void keyboard_handler_c(void) {
 		if (!pressed) {
 			return;
 		}
-
+/*
 		if (scancode == BACKSPACE) {
 			if (kdb_queue_occupancy > 0) {
 				kdb_queue_occupancy -=1;
@@ -47,7 +47,12 @@ void keyboard_handler_c(void) {
 			kprintf("\b");
 			return;
 		}
+*/
 
+		if (scancode == BACKSPACE) {
+			append_to_input_buffer('\b');
+			return;
+		}
 		char c;
 		if (key_pressed[LSHIFT] || key_pressed[RSHIFT]) {
 			c = shift_scan_code_table[scancode];

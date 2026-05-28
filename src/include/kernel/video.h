@@ -31,4 +31,7 @@ void move_cursor_up();
 void move_cursor_down();
 void draw_cursor();
 void hide_cursor();
+
+uint32_t get_fgc();
+void set_fgc(uint32_t nfgc);
 #endif

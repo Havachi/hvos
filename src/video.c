@@ -89,7 +89,7 @@ void draw_glyph(uint32_t x, uint32_t y, uint32_t fgc, uint32_t bgc, char *g) {
 static void _newline() {
     hide_cursor();
     line++;
-    col = 1;
+    col = 0;
     draw_cursor();
 }
 
@@ -228,7 +228,6 @@ void move_cursor_down() {
 
 void update_cursor() {
     static uint64_t ticks = 0;
-
     ticks++;
     if (ticks % 50 == 0) {
         if (cursor_visible)
@@ -236,4 +235,12 @@ void update_cursor() {
         else
             draw_cursor();
     }
+}
+
+uint32_t get_fgc() {
+    return fgc;
+}
+
+void set_fgc(uint32_t nfgc) {
+    fgc = nfgc;
 }

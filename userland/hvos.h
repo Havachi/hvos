@@ -25,6 +25,7 @@ void yield(void);
 
 // Basic userland utility
 void user_print(const char* message);
+void user_printerr(const char *str);
 
 
 #endif

@@ -49,3 +49,9 @@ void user_print(const char *str) {
 	while (str[len]) len++;
 	write(1, str, len);
 }
+
+void user_printerr(const char *str) {
+	int len = 0;
+	while (str[len]) len++;
+	write(2, str, len);
+}

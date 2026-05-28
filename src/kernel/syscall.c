@@ -1,10 +1,13 @@
 #include "kernel/syscall.h"
 #include "kernel/scheduler/task_state.h"
+#include "kernel/sync.h"
 #include "klibc/printf.h"
 #include "kernel/vfs.h"
 #include "kernel/syscall_id.h"
 #include "kernel/elf.h"
 #include "kernel/elf.h"
+#include <stdint.h>
+
 
 static vfs_node_t* open_files[MAX_FD] = {NULL};
 extern task_t tasks[];
@@ -31,14 +34,12 @@ int sys_open(const char *path) {
 		kprintf("[SYSCALL] sys_open: %s: No such file or directory\n", path);
 		return -1;
 	}
-
 	for (int i = 0; i < MAX_FD; i++) {
 		if (open_files[i] == NULL) {
 			open_files[i] = node;
 			return i;
 		}
 	}
-
 	return -1;
 }
 
@@ -48,6 +49,7 @@ int sys_read(int fd, uint8_t *buffer, uint32_t size) {
 	
 	if (fd == 0) {
 		uint32_t bytes_read = 0;
+		uint32_t written = 0;
 		while (bytes_read < size) {
 
 			char c = keyboard_get_char();
@@ -55,16 +57,20 @@ int sys_read(int fd, uint8_t *buffer, uint32_t size) {
 				task_t *current_task = get_current_task();
 				current_task->state = STATE_WAITING;
 				continue;
-			}
-			if (c == '\b') {
-				if (bytes_read == 0) {
-					continue;
-				} else {
-					bytes_read--;
+			} else {
+				*buffer++ = c;
+				return 1;
+				if (c == '\b') {
+					if (written == 0) {
+						continue;
+					} else {
+						written--;
+					}
 				}
+				kprintf("%c", c); 
+				if (c == '\n') break;
 			}
-			kprintf("%c", c); 
-			if (c == '\n') break;
+
 		}
 		return bytes_read;
 	}
@@ -78,6 +84,12 @@ int sys_write(int fd, uint8_t *buffer, uint32_t size) {
 	if (fd == 1) {
 		for (uint32_t i = 0; i < size; i++) {
 			kprintf("%c", buffer[i]);
+		}
+		return size;
+	}
+	if (fd == 2) {
+		for (uint32_t i = 0; i < size; i++) {
+			kprintf_err("%c", buffer[i]);
 		}
 		return size;
 	}

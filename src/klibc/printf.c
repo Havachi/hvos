@@ -11,6 +11,17 @@ void kprintf(const char * format, ...) {
 	va_end(args);
 }
 
+void kprintf_err(const char * format, ...) {
+	uint32_t oldfgc = get_fgc();
+	set_fgc(RED);
+	va_list args;
+	va_start(args, format);
+	kvprintf(format, args);
+	va_end(args);
+	set_fgc(oldfgc);
+
+}
+
 void kvprintf(const char *format, va_list args) {
 	uint64_t flags = safe_lock(&print_lock);
 	for(const char *p = format; *p != '\0'; p++) {

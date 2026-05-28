@@ -128,6 +128,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 			pml4_entry->rw = 1;
 			pml4_entry->us = 0;
 			pml4_entry->address = (uint64_t)new_table >> 12;
+			pml4_entry->_raw = pml4_entry->_raw | flags;
 		}
 		pdpt_table_t *pdpt = (pdpt_table_t *)(uint64_t)PHYS_TO_VIRT(pml4_entry->address << 12);
 		page_table_entry_t *pdpt_entry = &pdpt->entries[vaddr.pdpt_index];
@@ -142,6 +143,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 			pdpt_entry->rw = 1;
 			pdpt_entry->us = 0;
 			pdpt_entry->address = (uint64_t)new_table >> 12;
+			pdpt_entry->_raw = pdpt_entry->_raw | flags;
 		}
 		pd_table_t *pd = (pd_table_t *)(uint64_t) PHYS_TO_VIRT(pdpt_entry->address << 12);
 		page_table_entry_t *pd_entry = &pd->entries[vaddr.pd_index];
@@ -156,6 +158,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 			pd_entry->rw = 1;
 			pd_entry->us = 0;
 			pd_entry->address = (uint64_t)new_table >> 12;
+			pd_entry->_raw = pd_entry->_raw | flags;
 		}
 
 		pt_table_t *pt = (pt_table_t *)(uint64_t) PHYS_TO_VIRT(pd_entry->address << 12);
@@ -165,6 +168,8 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 		pt_entry->rw = 1;
 		pt_entry->us = 0;
 		pt_entry->address = paddr >> 12;
+		pt_entry->_raw = pt_entry->_raw | flags;
+
 }
 ///Map the whole usable ram
 static void map_ram(struct limine_memmap_response *memmap) {

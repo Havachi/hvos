@@ -22,6 +22,7 @@ void append_to_input_buffer(char c) {
 	if(kdb_queue_occupancy < KDB_BUFFER_SIZE){
 		kdb_queue[kdb_head] = c;	
 		kdb_head = (kdb_head + 1) % KDB_BUFFER_SIZE;
+		kdb_queue_occupancy++;
 	}
 }
 
@@ -62,6 +63,7 @@ char keyboard_get_char(void) {
 	if (kdb_queue_occupancy > 0){
 		c = kdb_queue[kdb_tail];
 		kdb_tail = (kdb_tail + 1) % KDB_BUFFER_SIZE;
+		kdb_queue_occupancy--;
 	}
 	return c;
 }

@@ -16,7 +16,7 @@ extern scheduler_c
 extern keyboard_handler_c
 extern page_fault_handler_c
 extern gpf_execption_handler_c
-
+extern update_cursor
 default_exception_handler:
 	jmp $
 
@@ -115,6 +115,8 @@ pit_interrupt:
 
 	mov rax, [rel g_local_apic_address]
 	mov dword [rax + 0xB0], 0
+
+	call update_cursor
 
 	mov rdi, rsp
 	call scheduler_c

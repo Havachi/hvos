@@ -13,6 +13,10 @@ static gdt_t **gdt_list;
 uint64_t syscall_kernel_stack = 0;
 
 
+tss_entry_t *get_local_tss() {
+	return &gdt_list[local_apic_get_id()]->tss;
+}
+
 static void set_gdt_tss_gate (gdt_desc_t* entry, uint64_t base, uint64_t limit) {
 
 	gdt_desc_t *tss_1 = entry;
@@ -39,9 +43,6 @@ static void set_gdt_tss_gate (gdt_desc_t* entry, uint64_t base, uint64_t limit) 
 	tss_2->base0 = (base_upper >> 16) & 0xFFFF;
 
 }
-
-
-
 
 void set_gdt_gate(gdt_desc_t *entry, uint32_t base, uint32_t limit, uint32_t flags) {
 	entry->base0 	= (base & 0xFFFF);

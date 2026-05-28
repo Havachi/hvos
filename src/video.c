@@ -1,4 +1,5 @@
 #include "kernel/video.h"
+#include <stdint.h>
 #include <string.h>
 
 static const uint32_t font_width = 8;
@@ -14,15 +15,39 @@ const uint32_t tab_space = 8;
 static uint32_t fgc = WHITE;
 static uint32_t bgc = BLACK;
 
+bool cursor_visible = false;
+
 uint32_t rgb_to_color(uint8_t r, uint8_t g, uint8_t b) {
     return (0xff << 24) | (((uint32_t)r) << 16) | (((uint32_t)g) << 8) | ((uint32_t)b);
 }
 
-// FIXED: Writes directly to Limine's hardware video address using precise byte-pitch steps
+static void _print_cursor(bool show) {
+    uint32_t posx = col * font_width + term_margin, posy = line * font_height + term_margin;
+    uint32_t color = show ? fgc : bgc;
+    for (uint64_t y = 0; y < font_height; y++) {
+        for (uint64_t x = 0; x < 2; x++) {
+            if ((posx + x) < fb->width && (posy + y) < fb->height) {
+                put_pixel(posx + x, posy + y, color);
+            }
+        }
+    }
+}
+
+void draw_cursor() {
+    if (!cursor_visible)
+        _print_cursor(true);
+    cursor_visible = true;
+}
+
+void hide_cursor(){
+    if (cursor_visible)
+        _print_cursor(false);
+    cursor_visible = false;
+}
+
 void put_pixel(uint32_t x, uint32_t y, uint32_t color) {
     if (x >= fb->width || y >= fb->height) return;
     
-    // Explicit byte-offset stride calculation to match GPU memory geometry
     uint8_t *fb_bytes = (uint8_t *)fb->address;
     uint32_t *pixel = (uint32_t *)(fb_bytes + (y * fb->pitch) + (x * 4));
     *pixel = color;
@@ -40,7 +65,7 @@ void draw_glyph(uint32_t x, uint32_t y, uint32_t fgc, uint32_t bgc, char *g) {
     uint32_t target_height = font_height;
     uint32_t target_width = font_width;
     size_t stride = (8 + 7) / 8;
-
+    
     for (size_t dy = 0; dy < target_height; ++dy) {
         size_t src_y = (dy * 16) / target_height;
         const uint8_t *row = g + src_y * stride;
@@ -61,14 +86,11 @@ void draw_glyph(uint32_t x, uint32_t y, uint32_t fgc, uint32_t bgc, char *g) {
     }
 }
 
-// REMOVED: _flush() is no longer needed since put_pixel writes directly to video memory.
-static void _flush() {
-    // No-op
-}
-
 static void _newline() {
+    hide_cursor();
     line++;
     col = 1;
+    draw_cursor();
 }
 
 // FIXED: Hardware-accelerated hardware scrolling using raw VRAM blocks
@@ -95,7 +117,7 @@ void _scroll_up() {
 
 void put_char(char c) {
     char *g = font8x16[(uint8_t)c];
-
+    hide_cursor();
     if (c == '\n') {
         _newline();
         return;
@@ -107,7 +129,10 @@ void put_char(char c) {
         return;
     }
     if (c == '\b') {
-        col--;
+        move_cursor_left();
+        put_char(' ');
+        move_cursor_left();
+        return;
     }
     if (col >= max_col) {
         _newline();
@@ -118,7 +143,8 @@ void put_char(char c) {
     }
 
     draw_glyph(col * font_width + term_margin, line * font_height + term_margin, fgc, bgc, g);
-    col++;
+    move_cursor_right();
+    draw_cursor();
 }
 
 static int _strlen(char *str) {
@@ -137,6 +163,7 @@ static void _print(char *str) {
         put_char(str[i]);
     }
 }
+
 
 void print(char *str) { _print(str); }
 
@@ -167,4 +194,46 @@ void init_fb() {
     max_line = (fb->height - (term_margin * 2)) / font_height - 1;
     
     clear_screen();
+}
+
+
+void move_cursor_right() {
+    hide_cursor();
+    if (col < max_col)
+        col++;
+    draw_cursor();
+}
+
+void move_cursor_left() {
+    hide_cursor();
+    if (col > 0)
+        col--;
+    draw_cursor();
+}
+
+
+void move_cursor_up() {
+    hide_cursor();
+    if (line > 0)
+        line--;
+    draw_cursor();
+}
+
+void move_cursor_down() {
+    hide_cursor();
+    if (line < max_line)
+        line++;
+    draw_cursor();
+}
+
+void update_cursor() {
+    static uint64_t ticks = 0;
+
+    ticks++;
+    if (ticks % 50 == 0) {
+        if (cursor_visible)
+            hide_cursor();
+        else
+            draw_cursor();
+    }
 }

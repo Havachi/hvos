@@ -24,6 +24,9 @@ void set_gdt_gate(gdt_desc_t *entry, uint32_t base, uint32_t limit, uint32_t fla
 void init_gdt();
 void init_gdt_local();
 void tss_set_kernel_stack(uint64_t stack_ptr);
+tss_entry_t *get_local_tss();
+
+
 extern void reload_gdt(void);
 extern void reload_tss(void);
 

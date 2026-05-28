@@ -2,3 +2,6 @@
 /bin/
 /obj/
 /initramfs
+hvos-boot.iso
+iso_root/initramfs.tar
+iso_root/*/hvos

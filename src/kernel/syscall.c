@@ -49,14 +49,20 @@ int sys_read(int fd, uint8_t *buffer, uint32_t size) {
 	if (fd == 0) {
 		uint32_t bytes_read = 0;
 		while (bytes_read < size) {
+
 			char c = keyboard_get_char();
 			if (c == 0) {
 				task_t *current_task = get_current_task();
 				current_task->state = STATE_WAITING;
-				yield();
 				continue;
 			}
-			buffer[bytes_read++] = c;
+			if (c == '\b') {
+				if (bytes_read == 0) {
+					continue;
+				} else {
+					bytes_read--;
+				}
+			}
 			kprintf("%c", c); 
 			if (c == '\n') break;
 		}

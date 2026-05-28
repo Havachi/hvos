@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 typedef struct task_s {
+    uint64_t pid;
     void *k_rsp;
 	uint64_t cr3;
 
@@ -15,7 +16,6 @@ typedef struct task_s {
     void    *block_channel;
 
     uint64_t tid;
-    uint64_t pid;
 	char name[16];
 
     void *kernel_stack_base;

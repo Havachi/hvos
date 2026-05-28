@@ -43,15 +43,23 @@ uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 						PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
 			// byte range this page covers in the segment
-			uint64_t seg_off_start = (vaddr_page + off) - vaddr_start + page_offset;
+			uint64_t dest_page_offset = (off == 0) ? page_offset : 0;
+			uint64_t file_read_offset = 
+				(off == 0) ? 0 : (off - page_offset);
 			uint64_t bytes_copied = 0;
 
-			if (seg_off_start < ph->p_filesz) {
-				bytes_copied = ph->p_filesz - seg_off_start;
-				if (bytes_copied > PAGE_SIZE) bytes_copied = PAGE_SIZE;
-				kmemcpy((void *)PHYS_TO_VIRT(phys_frame),
-						elf_buffer + ph->p_offset + seg_off_start,
-						bytes_copied);
+			if (file_read_offset < ph->p_filesz) {
+				uint64_t byte_to_copy = ph->p_filesz - file_read_offset;
+				if (byte_to_copy > (PAGE_SIZE - dest_page_offset)) {
+					byte_to_copy = PAGE_SIZE - dest_page_offset;
+				}
+
+				kmemcpy((void *)PHYS_TO_VIRT(phys_frame) + dest_page_offset,
+						elf_buffer + ph->p_offset + file_read_offset,
+						byte_to_copy);
+				bytes_copied = byte_to_copy + dest_page_offset;
+			} else {
+				bytes_copied = dest_page_offset;
 			}
 			// zero remainder (handles .bss)
 			if (bytes_copied < PAGE_SIZE)
@@ -65,24 +73,27 @@ uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 }
 
 task_t *create_elf_task(uint8_t *elf_buffer) {
+
 	uint64_t pml4_phys = 0;
 	uint64_t entry_point = load_elf_binary(elf_buffer, &pml4_phys);
 	if (entry_point == 0) return NULL;
+	
+	pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(pml4_phys);
 
-	task_t *new_task = (task_t *)PHYS_TO_VIRT((uint64_t)pmm_alloc());
-	kmemset(new_task, 0, sizeof(task_t));
+
+	uint64_t user_stack_phys = (uint64_t)pmm_alloc();
+	uint64_t user_stack_virt = 0x7FFFFFFF0000;
+	map_page(pml4_virt, user_stack_virt, user_stack_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
 	uint64_t k_stack_phys = (uint64_t)pmm_alloc();
 	uint64_t *stack_top = (uint64_t *)PHYS_TO_VIRT(k_stack_phys + PAGE_SIZE);
-	stack_top -= 15;
-	stack_top--;
-	*stack_top = entry_point;
 
-	new_task->kernel_stack_base = stack_top;
-	new_task->cr3   = pml4_phys;   // physical address for CR3
+	task_t *new_task = new_user_task(entry_point, user_stack_virt + PAGE_SIZE, (uint64_t)stack_top);
+	new_task->cr3   = pml4_phys;
 	new_task->vruntime = 0;
 	new_task->state = STATE_READY;
 	new_task->next  = NULL;
+
 	return new_task;
 }
 

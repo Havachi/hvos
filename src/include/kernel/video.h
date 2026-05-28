@@ -25,5 +25,10 @@ void print(char *str);
 void print_error(char *str);
 void clear_screen();
 void init_fb();
-
+void move_cursor_right();
+void move_cursor_left();
+void move_cursor_up();
+void move_cursor_down();
+void draw_cursor();
+void hide_cursor();
 #endif

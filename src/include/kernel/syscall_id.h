@@ -13,5 +13,6 @@
 
 #define SC_UPRINT		99
 
+#define SC_TIME			201
 
 #endif

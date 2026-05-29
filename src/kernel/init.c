@@ -5,6 +5,7 @@
 #include "kernel/intr.h"
 #include "kernel/isr.h"
 #include "kernel/scheduler/mt.h"
+#include "kernel/time.h"
 #include "mem/mem.h"
 #include "kernel/acpi.h"
 #include "kernel/reg.h"
@@ -78,8 +79,9 @@ void kernel_initialize(void) {
 	init_multitasking();
 	kprintf("multitasking enabled\n");
 	kbd_init();
-
+	
 	sti();
+	init_rtc();
 	
 	//smp_init();
 

@@ -2,6 +2,7 @@
 #define HVOS_CPU_IO_H
 #include <stddef.h>
 #include <stdint.h>
+#include "cpu/ports.h"
 
 static inline void io_write_8(uint32_t port, uint8_t data) {
 	__asm__ volatile("outb %b0, %w1" : : "a" (data), "Nd" (port));
@@ -37,7 +38,7 @@ static inline uint32_t io_read_32(uint32_t port)
 }
 
 static inline void io_wait() {
-	__asm__ volatile("jmp 1f;1:jmp 1f;1:");
+	io_write_8(PORT_POST_CHECK, 0x00);
 }
 
 static inline void mmio_write_8(void *p, uint8_t data)

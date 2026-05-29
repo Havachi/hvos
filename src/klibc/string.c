@@ -88,15 +88,13 @@ void	*kmemcpy(void *restrict dest, const void *restrict src, size_t n) {
 }
 
 size_t kstrlen(const char *str){
-	if ((uint64_t)str == 0x0A || (uint64_t)str < 0x1000) {
-        uint64_t *rbp_ptr;
-        asm volatile("mov %%rbp, %0" : "=r"(rbp_ptr));
-        for(;;);
-    }
-	size_t len = 0;
-	while (str[len++])
-		;
-	return len;
+	const char *end = str;
+	if (str == NULL)
+		return 0;
+	while (*end != '\0') {
+		++end;
+	}
+	return end - str;
 }
 
 size_t kstrnlen(const char *str, const size_t n){
@@ -140,6 +138,15 @@ char *kstrncpy(char *s1, const char *s2, register size_t n) {
 		kmemset(s1 +len, '\0', n - len);
 	return s1;
 }
+
+char *kstrcat(char *dest, const char *src) {
+	char *end = (char *)dest + kstrlen(dest);
+	kstrncpy(end, src, kstrlen((char *)src));
+	end = end + kstrlen((char *)src);
+	*end = '\0';
+	return dest;
+}
+
 
 void *kmemset(void *s, int c, size_t n) {
 	uint8_t *sb = (uint8_t *)s;

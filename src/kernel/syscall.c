@@ -1,6 +1,7 @@
 #include "kernel/syscall.h"
 #include "kernel/scheduler/task_state.h"
 #include "kernel/sync.h"
+#include "kernel/time.h"
 #include "kernel/video.h"
 #include "klibc/printf.h"
 #include "kernel/vfs.h"
@@ -8,6 +9,7 @@
 #include "kernel/elf.h"
 #include "kernel/elf.h"
 #include <stdint.h>
+#include <stdlib.h>
 
 
 static vfs_node_t* open_files[MAX_FD] = {NULL};
@@ -117,6 +119,13 @@ int sys_exec(const char *path) {
 	return elf_load_and_run(path);
 }
 
+int sys_time(uint64_t *ptr) {
+	datetime_t *dt = now();
+	timestamp_t ts = dttots(dt);
+	*ptr = ts;
+	return 0;
+}
+
 void syscall_handler(stack_frame_t *frame) {
 	uint64_t syscall_number = frame->rax;
 	switch (syscall_number) {
@@ -132,7 +141,6 @@ void syscall_handler(stack_frame_t *frame) {
 		case SC_OPEN:
 			frame->rax = sys_open((const char *)frame->rdi);
 			break;
-
 		case SC_EXIT:
 			sys_exit((int)frame->rdi);
 			break;
@@ -141,6 +149,9 @@ void syscall_handler(stack_frame_t *frame) {
 			break;
 		case SC_EXECVE:
 			frame->rax = sys_exec((const char *)frame->rdi);
+			break;
+		case SC_TIME:
+			frame->rax = sys_time((uint64_t *)frame->rdi);
 			break;
 		default:
 			kprintf("Unknown syscall: %d\n", syscall_number);

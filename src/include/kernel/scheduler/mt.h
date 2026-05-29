@@ -59,6 +59,7 @@ typedef struct {
 typedef struct {
     task_t *current;
     task_t *idle_task;
+    uint64_t allocated_ready_task_count;
     uint64_t ready_task_count;
     task_t *ready_list;
     uint64_t min_vruntime;

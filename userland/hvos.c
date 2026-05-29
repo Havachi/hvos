@@ -61,3 +61,20 @@ void user_printerr(const char *str) {
 	while (str[len]) len++;
 	write(2, str, len);
 }
+
+
+int liballoc_lock() {
+
+}
+
+int liballoc_unlock() {
+
+}
+
+void* liballoc_alloc(int) {
+
+}
+
+int liballoc_free(void*,int) {
+
+}

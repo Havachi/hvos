@@ -1,6 +1,7 @@
 #ifndef HVOS_MEM_H
 #define HVOS_MEM_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "limine.h"
@@ -47,6 +48,8 @@ void heap_expand(uint64_t size_needed);
 /*kmalloc.c*/
 void *kmalloc(uint64_t size);
 void kfree(void *ptr);
+void *kcalloc(size_t n, size_t size);
+void *krealloc(void *p, size_t new_n, size_t new_size, size_t old_total_size);
 
 /*pmm.c*/
 void pmm_init(struct limine_memmap_response* memmap);

@@ -118,6 +118,7 @@ INITRAMFSDIR := initramfs
 USERLANDDIR := userland
 USERLANDSRC := $(USERLANDDIR)/init.c $(USERLANDDIR)/shell.c
 USERLANDPROG := bin/init.elf bin/shell.elf
+USERLANDLIB := $(USERLANDDIR)/hvos.c $(USERLANDDIR)/liballoc.c
 USER_CFLAGS := -Wall -Wextra -std=gnu11 -ffreestanding -nostdlib -static -no-pie -fno-pie -fno-stack-protector -fno-stack-check -O2 -Wl,-T,userland/user.lds
 
 
@@ -148,9 +149,9 @@ obj/%.asm.o: %.asm GNUmakefile
 	mkdir -p "$(dir $@)"
 	nasm $(NASMFLAGS) $< -o $@
 
-bin/%.elf: $(USERLANDDIR)/%.c $(USERLANDDIR)/hvos.c GNUmakefile
+bin/%.elf: $(USERLANDDIR)/%.c $(USERLANDLIB) GNUmakefile
 	mkdir -p "$(dir $@)"
-	$(CC) $(USER_CFLAGS) $< $(USERLANDDIR)/hvos.c -o $@
+	$(CC) $(USER_CFLAGS) $< $(USERLANDLIB) -o $@
 
 $(INITRAMFSFILEPATH): $(USERLANDPROG)
 	mkdir -p $(INITRAMFSDIR)
@@ -198,5 +199,6 @@ fclean: clean
 
 re: fclean $(ISOOUT)
 
-
+kernel: bin/$(OUTPUT)
+userspace: $(USERLANDPROG)
 

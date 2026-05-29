@@ -1,6 +1,8 @@
 #include "mem/mem.h"
 #include "kernel/sync.h"
 #include "klibc/string.h"
+#include <stddef.h>
+#include <stdint.h>
 
 static safe_lock_t kmalloc_lock = {0};
 
@@ -70,4 +72,51 @@ void kfree(void *ptr) {
 		header->next = header->next->next;
 	}
 	safe_unlock(&kmalloc_lock, flags);
+}
+
+void *kcalloc(size_t n, size_t size) {
+	if (n != 0 && size > SIZE_MAX / n) {
+		return  NULL;
+	}
+
+	size_t total_size = n * size;
+
+	if (total_size == 0) {
+		return  NULL;
+	}
+
+	void *ptr = kmalloc(total_size);
+	if (!ptr) {
+		return NULL;
+	}
+
+	kmemset(ptr, 0, total_size);
+
+	return ptr;
+}
+
+void *krealloc(void *p, size_t new_n, size_t new_size, size_t old_total_size) {
+	if (!p) {
+		if (new_n != 0 && new_size > SIZE_MAX / new_n) {
+			return NULL;
+		}
+		return kmalloc(new_n * new_size);
+	}
+
+	if (new_n == 0 || new_size == 0) {
+		kfree(p);
+		return NULL;
+	}
+
+	size_t new_total_size = new_n * new_size;
+
+	void *new_ptr = kmalloc(new_total_size);
+	if (!new_ptr) {
+		return NULL;
+	}
+
+	size_t copy_size = (old_total_size < new_total_size) ? old_total_size : new_total_size;
+	kmemcpy(new_ptr, p, copy_size);
+	kfree(p);
+	return new_ptr;
 }

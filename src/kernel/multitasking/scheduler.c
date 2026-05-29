@@ -1,5 +1,6 @@
 #include "kernel/gdt.h"
 #include "kernel/scheduler/mt.h"
+#include "kernel/scheduler/task_state.h"
 #include "klibc/printf.h"
 #include "klibc/string.h"
 #include <stdint.h>
@@ -33,10 +34,22 @@ uint64_t scheduler_c(uint64_t old_rsp){
 	}
 
 	current_task->k_rsp = (void *)old_rsp;
+	task_t *new_task;
+	if (cpu_list->ready_list != NULL)
+		new_task = cpu_list->ready_list;
+	else
+		new_task = cpu_list->idle_task;
 
-	task_t *new_task = cpu_list->ready_list;
+	if (current_task->state != STATE_DEAD) {
+		cpu_list->current->state = STATE_READY;
+		cpu_list->ready_list = cpu_list->current;
+	} else {
+		cpu_list->current = NULL;
+	}	
+
 	cpu_list->current = new_task;
-
+	new_task->state = STATE_RUNNING;
+	
 	tss_entry_t *local_tss = get_local_tss();
 	local_tss->rsp0 = (uint64_t)new_task->kernel_stack_base;
 
@@ -45,15 +58,4 @@ uint64_t scheduler_c(uint64_t old_rsp){
 	}
 
 	return (uint64_t)new_task->k_rsp;
-	while(1) {
-		if (cpu_list->ready_list == NULL){
-			//switch_task(cpu_list->idle_task);
-			//context_switch(cpu_list->idle_task->k_rsp, cpu_list->current->k_rsp, cpu_list->current->cr3);
-			break;
-		} else {
-			get_current_task()->k_rsp = (void *)old_rsp;
-			switch_task(cpu_list->ready_list);
-		}
-	}
-	return old_rsp;
 }

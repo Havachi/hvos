@@ -27,6 +27,10 @@ void clear_buffer() {
 	index = 0;
 }
 
+void ls() {
+
+}
+
 
 void _start(void) {
 	user_print("\nWelcome to HVOS 0.1\n");
@@ -62,6 +66,8 @@ void _start(void) {
 		if (index == 0) continue;
 		if (strcmp(input_buffer, "help") == 0) {
 			user_print("Help menu !\n");
+		} else if(strcmp(input_buffer, "exit") == 0) {
+			exit(0);
 		} else {
 			user_printerr("hvsh: command not found: ");
 			user_printerr(input_buffer);

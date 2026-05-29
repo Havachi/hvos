@@ -4,6 +4,7 @@
 #define HVOS_USER_H
 
 #include <stdint.h>
+#include "liballoc.h"
 
 #define SC_READ			0
 #define SC_WRITE		1

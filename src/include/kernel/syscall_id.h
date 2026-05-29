@@ -12,6 +12,6 @@
 #define SC_EXIT			60
 
 #define SC_UPRINT		99
-
+#define SC_FUTEX		202
 
 #endif

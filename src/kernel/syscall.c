@@ -117,6 +117,10 @@ int sys_exec(const char *path) {
 	return elf_load_and_run(path);
 }
 
+int sys_futex(uint32_t *addr, int32_t op, uint32_t val) {
+	
+}
+
 void syscall_handler(stack_frame_t *frame) {
 	uint64_t syscall_number = frame->rax;
 	switch (syscall_number) {
@@ -142,6 +146,8 @@ void syscall_handler(stack_frame_t *frame) {
 		case SC_EXECVE:
 			frame->rax = sys_exec((const char *)frame->rdi);
 			break;
+		case SC_FUTEX:
+			sys_futex((uint32_t *)frame->rdi, (int32_t)frame->rsi, (uint32_t)frame->rdx);
 		default:
 			kprintf("Unknown syscall: %d\n", syscall_number);
 			break;

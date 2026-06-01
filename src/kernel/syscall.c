@@ -9,7 +9,6 @@
 #include "kernel/elf.h"
 #include "kernel/elf.h"
 #include <stdint.h>
-#include <stdlib.h>
 
 
 static vfs_node_t* open_files[MAX_FD] = {NULL};

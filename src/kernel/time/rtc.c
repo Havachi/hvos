@@ -1,7 +1,6 @@
 #include "asm/asm.h"
 #include "cpu/io.h"
 #include <stdint.h>
-#include <stdlib.h>
 #include "kernel/time.h"
 #include "klibc/printf.h"
 #include "klibc/string.h"
@@ -126,7 +125,7 @@ timestamp_t dttots(datetime_t *dt) {
 
 /// Convert timestamp to datetime struct (une petite dinguerie en vrai)
 datetime_t *tstodt(timestamp_t ts) {
-	datetime_t *dt = malloc(sizeof(datetime_t));
+	datetime_t *dt = kmalloc(sizeof(datetime_t));
 
 	uint32_t second_per_day = 86400;
 	long long epch_days = ts / second_per_day;

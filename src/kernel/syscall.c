@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 
-static vfs_node_t* open_files[MAX_FD] = {NULL};
+static file_t* open_files[MAX_FD] = {NULL};
 extern task_t tasks[];
 
 extern char keyboard_get_char(void);
@@ -31,14 +31,14 @@ void init_syscall(void) {
 int sys_open(const char *path) {
 	if (vfs_root == NULL || path == NULL) return -1;
 	if (path[0] == '/') path++;
-	vfs_node_t *node = vfs_finddir(vfs_root, path);
-	if (node == NULL) {
+	dentry_t *dentry = vfs_lookup(path);
+	if (dentry == NULL) {
 		kprintf("[SYSCALL] sys_open: %s: No such file or directory\n", path);
 		return -1;
 	}
 	for (int i = 0; i < MAX_FD; i++) {
 		if (open_files[i] == NULL) {
-			open_files[i] = node;
+			open_files[i] = vfs_open(path, 0);
 			return i;
 		}
 	}
@@ -78,7 +78,7 @@ int sys_read(int fd, uint8_t *buffer, uint32_t size) {
 	}
 
 	if (fd < 0 || fd >= MAX_FD || open_files[fd] == NULL) return -1;
-	return vfs_read(open_files[fd], 0, size, buffer);
+	return vfs_read(open_files[fd], (char *)buffer,  size);
 }
 
 int sys_write(int fd, uint8_t *buffer, uint32_t size) {

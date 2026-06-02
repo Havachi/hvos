@@ -6,6 +6,7 @@
 #include "mem/mem.h"
 #include "klibc/printf.h"
 #include <stdint.h>
+#include <sys/types.h>
 
 uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 	elf64_header_t *header = (elf64_header_t *)elf_buffer;
@@ -98,14 +99,33 @@ task_t *create_elf_task(uint8_t *elf_buffer) {
 }
 
 int elf_load_and_run(const char *path) {
-	vfs_node_t *file_node = vfs_finddir(vfs_root, path);
-	if (!file_node) {
+	file_t *file = vfs_open(path, 0);
+	if (!file) {
 		kprintf("[ELF] %s: No such file or directory\n", path);
 		return -1;
 	}
 
-	uint8_t *elf_buffer = (uint8_t *)kmalloc(file_node->size);
-	vfs_read(file_node, 0, file_node->size, elf_buffer);
+	size_t file_size = file->f_dentry->d_inode->i_size;
+	if (file_size == 0) {
+		kfree(file);
+		return -1;
+	}
+
+	uint8_t *elf_buffer = (uint8_t *)kmalloc(file_size);
+	if (!elf_buffer) {
+		kfree(file);
+		return -1;
+	}
+
+	ssize_t byte_read = vfs_read(file, (char *)elf_buffer, file_size);
+
+	if (byte_read < 0) {
+		kfree(elf_buffer);
+		kfree(file);
+		return -1;
+	}
+
+	kfree(file);
 
 	task_t *new_task = create_elf_task(elf_buffer);
 	if (!new_task) return -1;

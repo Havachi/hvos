@@ -82,7 +82,7 @@ task_t *create_elf_task(uint8_t *elf_buffer) {
 
 
 	uint64_t user_stack_phys = (uint64_t)pmm_alloc();
-	uint64_t user_stack_virt = 0x7FFFFFFF0000;
+	uint64_t user_stack_virt = USR_STACK_BASE;
 	map_page(pml4_virt, user_stack_virt, user_stack_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
 	uint64_t k_stack_phys = (uint64_t)pmm_alloc();
@@ -93,7 +93,7 @@ task_t *create_elf_task(uint8_t *elf_buffer) {
 	new_task->vruntime = 0;
 	new_task->state = STATE_READY;
 	new_task->next  = NULL;
-
+	new_task->heap_end = USR_HEAP_BASE;
 	return new_task;
 }
 

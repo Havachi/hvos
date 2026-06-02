@@ -19,6 +19,7 @@ typedef struct task_s {
 	char name[16];
 
     void *kernel_stack_base;
+    uint64_t heap_end;
     struct task_s *parent;
     struct task_s *next;
 } __packed task_t;

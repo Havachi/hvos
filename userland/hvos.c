@@ -1,4 +1,5 @@
 #include "hvos.h"
+#include <stdint.h>
 
 int read(int fd, void *buffer, uint32_t size) {
 	int read_bytes;
@@ -62,19 +63,30 @@ void user_printerr(const char *str) {
 	write(2, str, len);
 }
 
+void *user_alloc_page(uint32_t pages) {
+	uint64_t addr;
+	asm volatile("syscall" : "=a"(addr) : "a"(SC_MMAP), "S"(pages): "memory");
+}
+
+void user_free_pages(void *ptr, uint32_t pages) {
+	int res;
+	asm volatile("syscall" : "=a"(res) : "a"(SC_MUNMAP), "D"(ptr), "S"(pages): "memory");
+}
+
 
 int liballoc_lock() {
-
+	return 0;
 }
 
 int liballoc_unlock() {
-
+	return 0;
 }
 
-void* liballoc_alloc(int) {
-
+void* liballoc_alloc(int size) {
+	return (void *)user_alloc_page(size);
 }
 
-int liballoc_free(void*,int) {
-
+int liballoc_free(void* ptr ,int size) {
+	user_free_pages(ptr, size);
+	return 0;
 }

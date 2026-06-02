@@ -12,7 +12,6 @@
 
 
 
-
 extern void wrmsr(uint32_t, uint64_t);
 extern uint64_t rdmsr(uint32_t msr);
 extern void syscall_entry_asm(void);

@@ -1,6 +1,7 @@
 #include "mem/mem.h"
 #include "kernel/sync.h"
 #include "klibc/string.h"
+#include <stdint.h>
 
 
 safe_lock_t pmm_lock = { .locked = 0 };
@@ -65,6 +66,39 @@ void *pmm_alloc() {
 			used_pages++;
 			safe_unlock(&pmm_lock, flags);
 			return (void*) (i * PAGE_SIZE);
+		}
+	}
+	safe_unlock(&pmm_lock, flags);
+	return NULL;
+}
+
+void *pmm_alloc_n(uint64_t n) {
+	if(n == 0) return NULL;
+	if (n == 1) return pmm_alloc();
+	uint64_t flags = safe_lock(&pmm_lock);
+
+
+	for (uint64_t i = 1; i <= total_pages - n; i++) {
+		if (!bitmap_test(i)) {
+			uint64_t found  = 1;
+			uint64_t j;
+			for (j = 1; i < n; j++) {
+				if (bitmap_test(i+j)){
+					found = 0;
+					break;
+				}
+			}
+			if (found) {
+				for (uint64_t k = 0; k < n; k++) {
+					bitmap_set(i + k);
+				}
+
+				used_pages += n;
+				safe_unlock(&pmm_lock, flags);
+				return (void *) (i * PAGE_SIZE);
+			} else {
+				i += j;
+			}
 		}
 	}
 	safe_unlock(&pmm_lock, flags);

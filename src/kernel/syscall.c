@@ -125,6 +125,35 @@ int sys_time(uint64_t *ptr) {
 	return 0;
 }
 
+uint64_t sys_alloc_pages(uint32_t pages) {
+	if (pages == 0) return 0;
+
+	task_t *ct = get_current_task();
+	pml4_table_t *pm = (pml4_table_t *) PHYS_TO_VIRT(ct->cr3);
+
+	uint64_t virt_start = ct->heap_end;
+
+	for (uint64_t i = 0; i < pages; i++) {
+		void *phy_page = pmm_alloc();
+		if (phy_page == NULL) {
+			return 0;
+		}
+		uint64_t curr_virt = virt_start + (i * PAGE_SIZE);
+		uint64_t curr_phys = (uint64_t) phy_page;
+		map_page(pm, curr_virt, curr_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+	}
+
+	ct->heap_end += (pages * PAGE_SIZE);
+	return virt_start;
+}
+
+int sys_free_pages(void *ptr, uint32_t pages) {
+	if (!ptr)
+		return -1;
+	kfree(ptr);
+	return 0;
+}
+
 void syscall_handler(stack_frame_t *frame) {
 	uint64_t syscall_number = frame->rax;
 	switch (syscall_number) {
@@ -139,6 +168,12 @@ void syscall_handler(stack_frame_t *frame) {
 			break;
 		case SC_OPEN:
 			frame->rax = sys_open((const char *)frame->rdi);
+			break;
+		case SC_MMAP:
+			frame->rax = sys_alloc_pages(frame->rsi);
+			break;
+		case SC_MUNMAP:
+			frame->rax = sys_free_pages((void *)frame->rdi, frame->rsi);
 			break;
 		case SC_EXIT:
 			sys_exit((int)frame->rdi);

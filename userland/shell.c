@@ -1,5 +1,4 @@
 #include "hvos.h"
-
 static char input_buffer[128];
 static char history_buffer[100][128];
 static int index = 0;

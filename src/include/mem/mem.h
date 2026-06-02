@@ -16,6 +16,8 @@
 #define PTE_PCD			(1ULL << 4)
 #define PTE_NX			(1ULL << 63)
 #define PTE_ADDR_MASK	0x000ffffffffff000
+#define USR_STACK_BASE	0x00007FFFFFFFF000
+#define USR_HEAP_BASE	0x10000000
 #define PHYS_TO_VIRT(phys) ((uint64_t)(phys) + hhdm_offset)
 
 typedef struct heap_header_s {
@@ -54,6 +56,7 @@ void *krealloc(void *p, size_t new_n, size_t new_size, size_t old_total_size);
 /*pmm.c*/
 void pmm_init(struct limine_memmap_response* memmap);
 void *pmm_alloc();
+void *pmm_alloc_n(uint64_t n);
 void pmm_free(void* addr);
 
 

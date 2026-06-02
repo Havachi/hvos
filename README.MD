@@ -8,11 +8,10 @@ This makes me happy.
 
 ## To implement
 
-- [ ] Userspace dynamic memory allocation (malloc)
-	- [ ] New syscall
-		- [ ] futex
-		- [ ] mmap/munmap
-	- [ ] Implement liballoc function in userspace
+- [x] Userspace dynamic memory allocation (malloc)
+	- [x] New syscall
+		- [x] mmap/munmap
+	- [x] Implement liballoc function in userspace
 
 - [ ] Find a solution for the growing userspace libs
 - [ ] Filesystem (a big piece)

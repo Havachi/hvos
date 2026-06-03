@@ -21,7 +21,11 @@ void init_ap(){
 
 void push_new_task(task_t *task) {
 	cpu_task_list_t *current_cpu_list = cpu_task_lists[local_apic_get_id()];
-	current_cpu_list->ready_list = task;
+	if (current_cpu_list->ready_list != NULL){
+		current_cpu_list->ready_list->next = task;
+	} else {
+		current_cpu_list->ready_list = task;
+	}
 	current_cpu_list->ready_task_count++;
 }
 

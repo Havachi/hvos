@@ -116,7 +116,6 @@ typedef struct file_s {
 
 extern dentry_t *root_dentry;
 
-extern vfs_node_t* vfs_root;
 extern volatile struct limine_module_request module_request;
 
 

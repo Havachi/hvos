@@ -47,6 +47,7 @@ void ramfs_from_tar(uint8_t *tar_addr, size_t tar_size) {
 				const char *file_data_ptr = (const char *)(tar_addr + offset + 512);
 				uint64_t write_offset = 0;
 				file->f_ops->write(file, file_data_ptr, file_size, &write_offset);
+				file->f_dentry->d_inode->i_size = file_size;
 				kfree(file);
 			}
 

@@ -1,11 +1,9 @@
 #include "kernel/vfs.h"
+#include "kernel/fs/ramfs.h"
 #include "kernel/fs/tar.h"
 #include "mem/mem.h"
 #include <stdbool.h>
 #include <sys/types.h>
-
-vfs_node_t *vfs_root = NULL;
-static vfs_node_t root_dir_node;
 
 dentry_t *root_dentry = NULL;
 
@@ -14,8 +12,11 @@ static const char *next_path_token(const char *path, char *token) {
 	if (*path == '\0') return NULL;
 
 	int i = 0;
-	while (*path != '/' && *path != '\0' && i < 31) {
-		token[i++] = *path++;
+	while (*path != '/' && *path != '\0') {
+		if (i < 31) {
+			token[i++] = *path;
+		}
+		path++;
 	}
 	token[i] = '\0';
 	return path;
@@ -69,41 +70,12 @@ void vfs_init(void) {
 	
 	uint8_t *tar_ptr = (uint8_t *)response->modules[0]->address;
 	uint64_t tar_size = response->modules[0]->size;
-	uint64_t offset = 0;
 
-	kstrcpy(root_dir_node.name, "/");
-	root_dir_node.flags = VFS_DIR;
-	root_dir_node.size = 0;
-	root_dir_node.ops->finddir = ramdisk_finddir;
-	vfs_root = &root_dir_node;
-
-	kprintf("[VFS] Parsing ramdisk at %016lx (%d bytes)\n", tar_ptr, tar_size);
-	while (offset < tar_size) {
-		tar_header_t *header = (tar_header_t *)(tar_ptr + offset);
-		if (header->name[0] == '\0') break;
-		uint32_t file_size = octal_to_int(header->size, 11);
-
-		if (header->typeflag == '0' || header->typeflag == '\0') {
-			if (ramdisk_node_count >= MAX_RAMDISK_FILES) break;
-			vfs_node_t *node = &ramdisk_nodes[ramdisk_node_count++];
-			char *final_name = header->name;
-			if (final_name[0] == '.' && final_name[1] == '/') {
-				final_name += 2;
-			}
-
-			kstrcpy(node->name, final_name);
-			node->size = file_size;
-			node->flags = VFS_FILE;
-
-			node->data_ptr = (uint64_t)(tar_ptr + offset + 512);
-			node->ops->read = ramdisk_read;
-
-			kprintf("Found file: %s (%d bytes)\n", node->name, node->size);
-		}
-		offset += 512 + ((file_size + 511) & ~511);
-	}
+	ramfs_init();
+	ramfs_from_tar(tar_ptr, tar_size);
 	kprintf("[VFS] Filesystem setup completed cleanly\n");
 }
+
 file_t *vfs_open(const char *path, int flags) {
 	dentry_t *dentry = vfs_lookup(path);
 	if (!dentry || !dentry->d_inode) return NULL;
@@ -132,21 +104,37 @@ ssize_t vfs_read(file_t* filp, char *buffer, size_t size) {
 
 
 dentry_t *vfs_lookup(const char *path) {
-	if (!vfs_root || path[0] != '/') return NULL;
+	if (!root_dentry || !path) return NULL;
+	if (*path != '/') return NULL;
 
 	dentry_t *current = root_dentry;
 	char token [32];
 	const char *next = path;
 
 	while ((next = next_path_token(next, token)) != NULL) {
+		if (kstrcmp(token, ".") == 0) {
+			continue;
+		}
+		
+		if (kstrcmp(token, "..") == 0) {
+			if (current->d_parent) {
+				current = current->d_parent;
+			}
+			continue;
+		}
+
 		if (!(current->d_inode->i_mode & S_IFDIR) || !current->d_inode->i_op->lookup) {
 			return NULL;
 		}
 
 		dentry_t *search_dentry = alloc_dentry(token, NULL, current);
+		if (!search_dentry) return NULL;
 		dentry_t *found = current->d_inode->i_op->lookup(current->d_inode, search_dentry);
 
 		if (!found || !found->d_inode) {
+			if (search_dentry && (!found || found != search_dentry)) {
+				free_dentry(search_dentry);
+			}
 			return NULL;
 		}
 		current = found;
@@ -220,4 +208,49 @@ int vfs_create(const char *path, mode_t mode) {
 		return -5;
 
 	return parent->d_inode->i_op->create(parent->d_inode, new_file, mode);
+}
+
+int vfs_mkdir(const char *path, mode_t mode) {
+	char parent_dir[256];
+    char new_dir_name[64];
+
+    if (!vfs_split_path(path, parent_dir, sizeof(parent_dir), new_dir_name, sizeof(new_dir_name))) {
+        return -1;
+    }
+
+    dentry_t *parent_dentry = vfs_lookup(parent_dir);
+    if (!parent_dentry || !parent_dentry->d_inode) {
+        return -2;
+    }
+
+    if (!(parent_dentry->d_inode->i_mode & S_IFDIR)) {
+        return -3;
+    }
+
+    if (!parent_dentry->d_inode->i_op || !parent_dentry->d_inode->i_op->mkdir) {
+        return -4;
+    }
+
+    dentry_t *search_template = alloc_dentry(new_dir_name, NULL, parent_dentry);
+    if (!search_template) {
+        return -5;
+    }
+
+    dentry_t *existing = parent_dentry->d_inode->i_op->lookup(parent_dentry->d_inode, search_template);
+    if (existing && existing->d_inode != NULL) {
+        return -6;
+    }
+
+    dentry_t *new_dir_dentry = alloc_dentry(new_dir_name, NULL, parent_dentry);
+    if (!new_dir_dentry) {
+        return -5;
+    }
+
+    int result = parent_dentry->d_inode->i_op->mkdir(parent_dentry->d_inode, new_dir_dentry, mode);
+
+    if (result < 0) {
+        free_dentry(new_dir_dentry);
+    }
+
+    return result;
 }

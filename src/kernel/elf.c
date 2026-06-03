@@ -126,10 +126,10 @@ int elf_load_and_run(const char *path) {
 	}
 
 	kfree(file);
-
+	file = NULL;
 	task_t *new_task = create_elf_task(elf_buffer);
 	if (!new_task) return -1;
-
+	new_task->parent = get_current_task();
 	push_new_task(new_task);
 	return new_task->pid;
 }

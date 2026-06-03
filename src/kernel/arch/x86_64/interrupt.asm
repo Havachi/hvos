@@ -95,6 +95,7 @@ exception_body:
 	jmp $
 
 pit_interrupt:
+	cli
 	push r15
 	push r14
 	push r13
@@ -137,7 +138,7 @@ pit_interrupt:
 	pop r13
 	pop r14
 	pop r15
-
+	sti
 	iretq
 	
 keyboard_interrupt:

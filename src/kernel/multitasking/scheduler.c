@@ -35,16 +35,22 @@ uint64_t scheduler_c(uint64_t old_rsp){
 
 	current_task->k_rsp = (void *)old_rsp;
 	task_t *new_task;
-	if (cpu_list->ready_list != NULL)
-		new_task = cpu_list->ready_list;
-	else
-		new_task = cpu_list->idle_task;
-
+	if (current_task != NULL && current_task->next != NULL) {
+		new_task = current_task->next;
+	} else {
+		if (cpu_list->ready_list != NULL)
+			new_task = cpu_list->ready_list;
+		else
+			new_task = cpu_list->idle_task;
+	}
 	if (current_task->state != STATE_DEAD) {
 		cpu_list->current->state = STATE_READY;
 		cpu_list->ready_list = cpu_list->current;
 	} else {
-		cpu_list->current = NULL;
+		if (current_task->next != NULL)
+			current_task->state = STATE_WAITING;
+		else
+			cpu_list->current = NULL;
 	}	
 
 	cpu_list->current = new_task;

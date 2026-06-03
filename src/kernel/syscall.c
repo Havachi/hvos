@@ -29,7 +29,7 @@ void init_syscall(void) {
 }
 
 int sys_open(const char *path) {
-	if (vfs_root == NULL || path == NULL) return -1;
+	if (root_dentry == NULL || path == NULL) return -1;
 	if (path[0] == '/') path++;
 	dentry_t *dentry = vfs_lookup(path);
 	if (dentry == NULL) {
@@ -108,7 +108,7 @@ void sys_print(const char *str) {
 
 void sys_exit(int code) {
 	task_t *ct = get_current_task();
-	kprintf("\n[KERNEL] process %d exited with code: %d\n", ct->pid, code);
+	//kprintf("\n[KERNEL] process %d exited with code: %d\n", ct->pid, code);
 	ct->state = STATE_DEAD;
 	asm volatile("int $0x30");
 }

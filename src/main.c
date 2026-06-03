@@ -39,7 +39,7 @@ void kmain(void) {
     kprintf("loading shell\n");
 
 
-	elf_load_and_run("shell.elf");
+	elf_load_and_run("/init.elf");
 	//create_test_task();
 
 	hcf();

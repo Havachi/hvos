@@ -147,6 +147,17 @@ char *kstrcat(char *dest, const char *src) {
 	return dest;
 }
 
+char *kstrrchr(const char *s, int c) {
+	char *last = NULL;
+	char target = (char)c;
+	do {
+		if (*s == target){
+			last = (char *)s;
+		}
+	} while(*s++);
+	return last;
+}
+
 
 void *kmemset(void *s, int c, size_t n) {
 	uint8_t *sb = (uint8_t *)s;
@@ -184,3 +195,4 @@ void *kmemset(void *s, int c, size_t n) {
 
 	return s;
 }
+

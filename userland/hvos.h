@@ -22,6 +22,11 @@
 #define CANCEL 0x18
 #define CLEAR  0x02
 
+typedef struct cmd_s {
+	char **tokens;
+	uint32_t nb_tokens;
+} cmd_t;
+
 int open(const char* path);
 int read(int fd, void* buffer, uint32_t size);
 int write(int fd, const void* buffer, uint32_t size);

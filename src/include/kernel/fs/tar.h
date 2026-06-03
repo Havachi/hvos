@@ -1,6 +1,7 @@
 #ifndef HVOS_TAR_H
 #define HVOS_TAR_H
 
+#include "klibc/sys/types.h"
 
 #define TAR_TYPE_NORMAL '0'
 #define TAR_TYPE_DIR '5'
@@ -25,5 +26,5 @@ typedef struct {
 	char padding[12];
 } __attribute__((packed)) tar_header_t;
 
-
+void ramfs_from_tar(unsigned char *tar_addr, size_t tar_size);
 #endif

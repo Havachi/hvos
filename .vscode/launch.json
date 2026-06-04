@@ -1,38 +1,54 @@
 {
-	// Use IntelliSense to learn about possible attributes.
-	// Hover to view descriptions of existing attributes.
-	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-	"version": "0.2.0",
-	"configurations": [
-		{
-		"name": "Launch with GDB",
-		"type": "cppdbg",
-		"request": "launch",
-		"targetArchitecture": "x64",
-		"program": "${workspaceRoot}/bin/hvos",
-		"cwd": "${workspaceRoot}",
-		"args": [],
-		"MIMode": "gdb",
-		"miDebuggerPath": "/usr/bin/gdb",
-		"miDebuggerArgs": "",
-		"customLaunchSetupCommands": [
-			{
-				"text": "target remote localhost:1234",
-				"description": "Connect to QEMU remote debugger"
-			}
-		],
-		"setupCommands": [
-			{
-				"description": "Enable pretty-printing for gdb",
-				"text": "-enable-pretty-printing",
-				"ignoreFailures": true
-			},
-			{
-				"text": "file ${workspaceRoot}/bin/hvos",
-				"description": "Load binary."
-			}
-		],
-		"preLaunchTask": "Launch QEMU"
-	}
-]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch with GDB",
+      "type": "cppdbg",
+      "request": "launch",
+      "targetArchitecture": "x64",
+      "program": "${workspaceRoot}/bin/hvos",
+      "cwd": "${workspaceRoot}",
+      "args": [],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "miDebuggerArgs": "",
+      "customLaunchSetupCommands": [
+        {
+          "text": "target remote localhost:1234",
+          "description": "Connect to QEMU remote debugger"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "text": "file ${workspaceRoot}/bin/hvos",
+          "description": "Load binary."
+        }
+      ],
+      "preLaunchTask": "Launch QEMU"
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "cwd": "/home/havachi/source/hvos/hvlibc",
+      "program": "/home/havachi/source/hvos/hvlibc/build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
 }

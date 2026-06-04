@@ -187,7 +187,6 @@ run: $(ISOOUT) installbios
 	qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -smp 4
 
 # Remove object files and the final executable.
-.PHONY: all mkramfs clean
 clean:
 	rm -rf bin obj
 
@@ -201,4 +200,8 @@ re: fclean $(ISOOUT)
 
 kernel: bin/$(OUTPUT)
 userspace: $(USERLANDPROG)
+hvlibc:
+	make -C hvlibc
 
+
+.PHONY: all mkramfs clean hvlibc userspace kernel re fclean run rundbg installbios

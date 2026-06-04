@@ -1,0 +1,3 @@
+[submodule "hvlibc"]
+	path = hvlibc
+	url = git@github.com:Havachi/hvlibc.git

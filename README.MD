@@ -14,6 +14,7 @@ This makes me happy.
 	- [x] Implement liballoc function in userspace
 
 - [ ] Find a solution for the growing userspace libs
+	- [ ] Make hvlibc
 - [ ] Filesystem (a big piece)
 	- [ ] Make current VFS more complete
 	- [ ] Disk driver

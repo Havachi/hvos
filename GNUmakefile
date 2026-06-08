@@ -33,7 +33,7 @@ ifeq ($(TOOLCHAIN),llvm)
 endif
 
 # User controllable C flags.
-CFLAGS := -g -Og -pipe -I./src/include
+CFLAGS := -g -Og -pipe -I./src/include -isystem./hvlibc/include
 
 # User controllable C preprocessor flags. We set none by default.
 CPPFLAGS :=
@@ -75,6 +75,7 @@ override CFLAGS += \
 	-mno-red-zone \
 	-mcmodel=kernel \
 	-ggdb \
+	-nostdinc \
 	-O0
 
 # Internal C preprocessor flags that should not be changed by the user.
@@ -120,7 +121,10 @@ USERLANDSRC := $(USERLANDDIR)/init.c $(USERLANDDIR)/shell.c
 USERLANDPROG := bin/init.elf bin/shell.elf
 USERLANDLIB := $(USERLANDDIR)/hvos.c $(USERLANDDIR)/liballoc.c
 USER_CFLAGS := -Wall -Wextra -std=gnu11 -ffreestanding -nostdlib -static -no-pie -fno-pie -fno-stack-protector -fno-stack-check -O2 -Wl,-T,userland/user.lds
+HVLIBC_DIR := hvlibc
+SYSROOT_DIR?=sysroot
 
+INSTALLED_HVLIBC:= $(SYSROOT_DIR)/usr/lib/libc.a
 
 # Default target. This must come first, before header dependencies.
 .PHONY: all
@@ -200,8 +204,37 @@ re: fclean $(ISOOUT)
 
 kernel: bin/$(OUTPUT)
 userspace: $(USERLANDPROG)
-hvlibc:
-	make -C hvlibc
 
+
+$(INSTALLED_HVLIBC): mkfullsysroot
+	SYSROOT_DIR=../$(SYSROOT_DIR) make -C hvlibc
+	SYSROOT_DIR=../$(SYSROOT_DIR) make -C hvlibc install
+
+$(SYSROOT_DIR):
+	@mkdir -p $(SYSROOT_DIR)
+
+mkbasesysroot: $(SYSROOT_DIR)
+	@mkdir -p $(SYSROOT_DIR)/bin $(SYSROOT_DIR)/lib
+	@mkdir -p $(SYSROOT_DIR)/usr/bin $(SYSROOT_DIR)/usr/lib
+
+mkfullsysroot: $(SYSROOT_DIR)
+	@mkdir -p \
+		$(SYSROOT_DIR)/bin \
+		$(SYSROOT_DIR)/etc \
+		$(SYSROOT_DIR)/sbin \
+		$(SYSROOT_DIR)/usr \
+		$(SYSROOT_DIR)/usr/bin \
+		$(SYSROOT_DIR)/usr/include \
+		$(SYSROOT_DIR)/usr/lib \
+		$(SYSROOT_DIR)/usr/local \
+		$(SYSROOT_DIR)/usr/share \
+
+install_headers: install_hvlibc_header install_hvos_header
+
+install_hvlibc_header:
+	SYSROOT_DIR=../$(SYSROOT_DIR) make -C hvlibc install_headers
+
+install_hvos_header:
+	cp -RT src/include $(SYSROOT_DIR)/usr/include
 
 .PHONY: all mkramfs clean hvlibc userspace kernel re fclean run rundbg installbios

@@ -1,0 +1,145 @@
+diff --git a/bfd/config.bfd b/bfd/config.bfd
+index a4c6c8e8854..b87254d8da8 100644
+--- a/bfd/config.bfd
++++ b/bfd/config.bfd
+@@ -655,6 +655,11 @@ case "${targ}" in
+     targ_selvecs=
+     targ64_selvecs=x86_64_elf64_vec
+     ;;
++  i[3-7]86-*-hvos*)
++    targ_defvec=i386_elf32_vec
++    targ_selvecs=
++    targ64_selvecs=x86_64_elf64_vec
++    ;;
+ #ifdef BFD64
+   x86_64-*-cloudabi*)
+     targ_defvec=x86_64_elf64_cloudabi_vec
+@@ -720,6 +725,12 @@ case "${targ}" in
+     targ_selvecs=i386_elf32_vec
+     want64=true
+     ;;
++  x86_64-*-hvos*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
++    ;;
++
+ #endif
+   i[3-7]86-*-lynxos*)
+     targ_defvec=i386_elf32_vec
+@@ -749,6 +760,7 @@ case "${targ}" in
+     targ_defvec=i386_elf32_vec
+     targ_selvecs="i386_pei_vec"
+     ;;
++
+   i[3-7]86-*-interix*)
+     targ_defvec=i386_pei_vec
+     targ_selvecs="i386_pe_vec"
+diff --git a/config.sub b/config.sub
+index dba16e84c77..44193f74247 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1750,7 +1750,7 @@ case $os in
+ 	     | os2* | vos* | palmos* | uclinux* | nucleus* | morphos* \
+ 	     | scout* | superux* | sysv* | rtmk* | tpf* | windiss* \
+ 	     | powermax* | dnix* | nx6 | nx7 | sei* | dragonfly* \
+-	     | skyos* | haiku* | rdos* | toppers* | drops* | es* \
++	     | skyos* | haiku* | hvos* | rdos* | toppers* | drops* | es* \
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+diff --git a/gas/configure.tgt b/gas/configure.tgt
+index 62f806bdfe8..c8b78f1a5ff 100644
+--- a/gas/configure.tgt
++++ b/gas/configure.tgt
+@@ -239,6 +239,7 @@ case ${generic_target} in
+     esac ;;
+   i386-*-lynxos*)			fmt=elf em=lynx ;;
+   i386-*-redox*)			fmt=elf ;;
++  i386-*-hvos*)       fmt=elf ;;
+   i386-*-solaris*)			fmt=elf em=solaris ;;
+   i386-*-freebsd* \
+   | i386-*-kfreebsd*-gnu)		fmt=elf em=freebsd ;;
+diff --git a/ld/Makefile.am b/ld/Makefile.am
+index d31021c13e2..bbfa99bf1de 100644
+--- a/ld/Makefile.am
++++ b/ld/Makefile.am
+@@ -278,6 +278,7 @@ ALL_EMULATION_SOURCES = \
+ 	eelf_i386_be.c \
+ 	eelf_i386_fbsd.c \
+ 	eelf_i386_haiku.c \
++	eelf_i386_hvos.c \
+ 	eelf_i386_ldso.c \
+ 	eelf_i386_sol2.c \
+ 	eelf_i386_vxworks.c \
+@@ -456,6 +457,7 @@ ALL_64_EMULATION_SOURCES = \
+ 	eelf_x86_64_cloudabi.c \
+ 	eelf_x86_64_fbsd.c \
+ 	eelf_x86_64_haiku.c \
++	eelf_x86_64_hvos.c \
+ 	eelf_x86_64_sol2.c \
+ 	ehppa64linux.c \
+ 	ei386pep.c \
+diff --git a/ld/Makefile.in b/ld/Makefile.in
+index ee0c98f65b0..1ffc7083c54 100644
+--- a/ld/Makefile.in
++++ b/ld/Makefile.in
+@@ -775,6 +775,7 @@ ALL_EMULATION_SOURCES = \
+ 	eelf_i386_be.c \
+ 	eelf_i386_fbsd.c \
+ 	eelf_i386_haiku.c \
++	eelf_i386_hvos.c \
+ 	eelf_i386_ldso.c \
+ 	eelf_i386_sol2.c \
+ 	eelf_i386_vxworks.c \
+@@ -952,6 +953,7 @@ ALL_64_EMULATION_SOURCES = \
+ 	eelf_x86_64_cloudabi.c \
+ 	eelf_x86_64_fbsd.c \
+ 	eelf_x86_64_haiku.c \
++	eelf_x86_64_hvos.c \
+ 	eelf_x86_64_sol2.c \
+ 	ehppa64linux.c \
+ 	ei386pep.c \
+@@ -1444,6 +1446,7 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_be.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_fbsd.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_haiku.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_hvos.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_ldso.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_sol2.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_vxworks.Po@am__quote@
+@@ -1454,6 +1457,7 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_cloudabi.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_fbsd.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_haiku.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_hvos.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_sol2.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eh8300elf.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eh8300elf_linux.Po@am__quote@
+diff --git a/ld/configure.tgt b/ld/configure.tgt
+index 2bae9099b6a..59897aebef2 100644
+--- a/ld/configure.tgt
++++ b/ld/configure.tgt
+@@ -440,6 +440,11 @@ i[3-7]86-*-beos*)	targ_emul=elf_i386_be
+ 			;;
+ i[3-7]86-*-haiku*)	targ_emul=elf_i386_haiku
+ 			;;
++i[3-7]86-*-hvos*)	
++			targ_emul=elf_i386_hvos
++			targ_extra_emuls=elf_1386
++			targ64_extra_emuls="elf_x86_64_hvos elfx86_64"
++			;;
+ i[3-7]86-*-vxworks*)	targ_emul=elf_i386_vxworks
+ 			;;
+ i[3-7]86-*-chaos)	targ_emul=elf_i386_chaos
+@@ -993,6 +998,10 @@ x86_64-*-cloudabi*)	targ_emul=elf_x86_64_cloudabi
+ x86_64-*-haiku*)	targ_emul=elf_x86_64_haiku
+ 			targ_extra_emuls="elf_x86_64 elf_i386_haiku"
+ 			;;
++x86_64-*-hvos*)	
++			targ_emul=elf_x86_64_hvos
++			targ64_extra_emuls="elf_i386_hvos elf_x86_64 elf_i386"
++			;;
+ x86_64-*-linux-gnux32)	targ_emul=elf32_x86_64
+ 			targ_extra_emuls="elf_x86_64 elf_i386 elf_iamcu"
+ 			targ_extra_libpath="elf_i386 elf_iamcu elf_x86_64"

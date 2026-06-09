@@ -1,6 +1,6 @@
 #ifndef HVOS_KLIBC_TYPES
 #define HVOS_KLIBC_TYPES
-
+/*
 typedef long blkcnt_t;
 typedef long blksize_t;
 typedef long clock_t;
@@ -27,4 +27,5 @@ typedef long int trace_event_id_t;
 typedef long int trace_event_set_t;
 typedef long int trace_id_t;
 typedef unsigned int uid_t;
+*/
 #endif

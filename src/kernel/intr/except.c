@@ -26,7 +26,7 @@ static const char *s_exceptionDesc[20] =
     [19] = "SIMD Exception"
 };
 
-void exception_dump(register_t regs)
+void exception_dump(registers_t regs)
 {
     const char *desc = "Unknown";
     if (regs.int_num < 20)

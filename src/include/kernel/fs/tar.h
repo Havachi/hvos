@@ -2,6 +2,7 @@
 #define HVOS_TAR_H
 
 #include "klibc/sys/types.h"
+#include <sys/types.h>
 
 #define TAR_TYPE_NORMAL '0'
 #define TAR_TYPE_DIR '5'

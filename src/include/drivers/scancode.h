@@ -1,5 +1,5 @@
 #ifndef HVOS_DRIVERS_SCANCODES_H
-#define HVOS_DRIVERS_SCANCODES_H$
+#define HVOS_DRIVERS_SCANCODES_H
 
 char normal_scan_code_table[128] = {
   0, // 0x00

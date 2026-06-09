@@ -38,7 +38,7 @@ typedef struct {
     uint64_t rip, cs, rflags, rsp, ss;
 } __attribute__((packed)) fault_frame_t;
 
-void exception_dump(register_t regs);
+void exception_dump(registers_t regs);
 void page_fault_handler_c(fault_frame_t *f, uint64_t cr2);
 
 #endif

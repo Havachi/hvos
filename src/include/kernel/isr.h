@@ -39,9 +39,9 @@
 
 DEFISR;
 
-typedef void (*event_handlers_t)(register_t *);
+typedef void (*event_handlers_t)(registers_t *);
 
 void isr_install(void);
-void isr_common_handler(register_t *frame);
+void isr_common_handler(registers_t *frame);
 void isr_register_handler(int n, void *handler);
 #endif

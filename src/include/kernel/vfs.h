@@ -2,6 +2,7 @@
 #define HVOS_VFS_H
 
 #include <stdint.h>
+#include <sys/types.h>
 #include <stddef.h>
 #include "kernel/boot.h"
 #include "klibc/printf.h"

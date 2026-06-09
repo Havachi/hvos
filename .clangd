@@ -1,0 +1,7 @@
+CompileFlags:
+  Add:
+    - --target=x86_64-hvos
+    - -ffreestanding
+    - -std=c11
+    - --sysroot=sysroot
+    - -lc

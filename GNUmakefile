@@ -25,6 +25,7 @@ endif
 
 # User controllable linker command.
 LD := $(TOOLCHAIN_PREFIX)ld
+LDU := x86_64-hvos-ld
 
 # Defaults overrides for variables if using "llvm" as toolchain.
 ifeq ($(TOOLCHAIN),llvm)
@@ -33,7 +34,7 @@ ifeq ($(TOOLCHAIN),llvm)
 endif
 
 # User controllable C flags.
-CFLAGS := -g -Og -pipe -I./src/include -isystem./hvlibc/include
+CFLAGS := -g -Og -pipe -I./src/include -lc
 
 # User controllable C preprocessor flags. We set none by default.
 CPPFLAGS :=
@@ -75,7 +76,7 @@ override CFLAGS += \
 	-mno-red-zone \
 	-mcmodel=kernel \
 	-ggdb \
-	-nostdinc \
+	--sysroot=sysroot \
 	-O0
 
 # Internal C preprocessor flags that should not be changed by the user.
@@ -119,10 +120,14 @@ INITRAMFSDIR := initramfs
 USERLANDDIR := userland
 USERLANDSRC := $(USERLANDDIR)/init.c $(USERLANDDIR)/shell.c
 USERLANDPROG := bin/init.elf bin/shell.elf
-USERLANDLIB := $(USERLANDDIR)/hvos.c $(USERLANDDIR)/liballoc.c
-USER_CFLAGS := -Wall -Wextra -std=gnu11 -ffreestanding -nostdlib -static -no-pie -fno-pie -fno-stack-protector -fno-stack-check -O2 -Wl,-T,userland/user.lds
-HVLIBC_DIR := hvlibc
+USERLANDLIB := $(USERLANDDIR)/hvos.c
 SYSROOT_DIR?=sysroot
+
+USER_CFLAGS := -Wall -Wextra -std=gnu11 -ffreestanding \
+	 -static -no-pie -fno-pie -fno-stack-protector -fno-stack-check \
+	  -O2 -Wl,-T,userland/user.lds \
+	  --sysroot=$(SYSROOT_DIR) -isystem$(SYSROOT_DIR)/usr/include
+HVLIBC_DIR := hvlibc
 
 INSTALLED_HVLIBC:= $(SYSROOT_DIR)/usr/lib/libc.a
 
@@ -135,45 +140,41 @@ all: bin/$(OUTPUT) $(USERLANDPROG)
 
 # Link rules for the final executable.
 bin/$(OUTPUT): GNUmakefile linker.lds $(OBJ)
-	mkdir -p "$(dir $@)"
-	$(LD) $(LDFLAGS) $(OBJ) -o $@
+	@mkdir -p "$(dir $@)"
+	@$(LD) $(LDFLAGS) $(OBJ) -o $@
 
 # Compilation rules for *.c files.
 obj/%.c.o: %.c GNUmakefile
-	mkdir -p "$(dir $@)"
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	@mkdir -p "$(dir $@)"
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.S files.
 obj/%.S.o: %.S GNUmakefile
-	mkdir -p "$(dir $@)"
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	@mkdir -p "$(dir $@)"
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.asm (nasm) files.
 obj/%.asm.o: %.asm GNUmakefile
-	mkdir -p "$(dir $@)"
-	nasm $(NASMFLAGS) $< -o $@
-
-bin/%.elf: $(USERLANDDIR)/%.c $(USERLANDLIB) GNUmakefile
-	mkdir -p "$(dir $@)"
-	$(CC) $(USER_CFLAGS) $< $(USERLANDLIB) -o $@
+	@mkdir -p "$(dir $@)"
+	@nasm $(NASMFLAGS) $< -o $@
 
 $(INITRAMFSFILEPATH): $(USERLANDPROG)
-	mkdir -p $(INITRAMFSDIR)
-	touch $(INITRAMFSDIR)/hello.txt
+	@mkdir -p $(INITRAMFSDIR)
+	@touch $(INITRAMFSDIR)/hello.txt
 	@echo "Funny text" > $(INITRAMFSDIR)/hello.txt
-	cp $(USERLANDPROG) $(INITRAMFSDIR)/
-	tar --format=ustar -cvf $(INITRAMFSFILEPATH) -C $(INITRAMFSDIR) .
+	@cp $(USERLANDPROG) $(INITRAMFSDIR)/
+	@tar --format=ustar -cvf $(INITRAMFSFILEPATH) -C $(INITRAMFSDIR) .
 
 
 $(ISOOUT): bin/$(OUTPUT) $(INITRAMFSFILEPATH)
-	mkdir -p $(ISOROOTDIR)
-	mkdir -p $(ISOROOTBOOTDIR)
-	cp bin/$(OUTPUT) $(ISOROOTBOOTDIR) 
-	mkdir -p $(ISOROOTBOOTDIR)/limine
-	cp limine.conf $(LIMINEBIOSFILES) $(ISOROOTBOOTDIR)/limine/
-	mkdir -p $(ISOROOTDIR)/EFI/BOOT
-	cp $(LIMINEEFIFILES) $(ISOROOTDIR)/EFI/BOOT
-	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
+	@mkdir -p $(ISOROOTDIR)
+	@mkdir -p $(ISOROOTBOOTDIR)
+	@cp bin/$(OUTPUT) $(ISOROOTBOOTDIR) 
+	@mkdir -p $(ISOROOTBOOTDIR)/limine
+	@cp limine.conf $(LIMINEBIOSFILES) $(ISOROOTBOOTDIR)/limine/
+	@mkdir -p $(ISOROOTDIR)/EFI/BOOT
+	@cp $(LIMINEEFIFILES) $(ISOROOTDIR)/EFI/BOOT
+	@xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
 	-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
 		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
 		-efi-boot-part --efi-boot-image --protective-msdos-label \
@@ -182,33 +183,40 @@ $(ISOOUT): bin/$(OUTPUT) $(INITRAMFSFILEPATH)
 
 
 installbios:
-	./limine-binary/limine bios-install $(ISOOUT)
+	@./limine-binary/limine bios-install $(ISOOUT)
 
 rundbg: $(ISOOUT) installbios
-	qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -d int
+	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -d int
 
 run: $(ISOOUT) installbios
-	qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -smp 4
+	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -smp 4
 
 # Remove object files and the final executable.
 clean:
-	rm -rf bin obj
+	@rm -rf bin obj
 
 fclean: clean
-	rm -rf $(ISOOUT)	
-	rm -f $(ISOROOTBOOTDIR)/$(OUTPUT)
-	rm -rf $(INITRAMFSDIR)
-	rm -f $(INITRAMFSFILEPATH)
+	@rm -rf $(ISOOUT)	
+	@rm -f $(ISOROOTBOOTDIR)/$(OUTPUT)
+	@rm -rf $(INITRAMFSDIR)
+	@rm -f $(INITRAMFSFILEPATH)
 
 re: fclean $(ISOOUT)
 
 kernel: bin/$(OUTPUT)
-userspace: $(USERLANDPROG)
+userspace:
+	make -C $(USERLANDDIR)
+
+$(USERLANDPROG): userspace
+	@cp $(USERLANDDIR)/build/*.elf ./bin
 
 
 $(INSTALLED_HVLIBC): mkfullsysroot
-	SYSROOT_DIR=../$(SYSROOT_DIR) make -C hvlibc
-	SYSROOT_DIR=../$(SYSROOT_DIR) make -C hvlibc install
+	@SYSROOT_DIR=../$(SYSROOT_DIR) make --no-print-directory -C hvlibc
+	@SYSROOT_DIR=../$(SYSROOT_DIR) make --no-print-directory -C hvlibc install
+
+fclean_lib:
+	make --no-print-directory -C hvlibc fclean
 
 $(SYSROOT_DIR):
 	@mkdir -p $(SYSROOT_DIR)
@@ -231,10 +239,15 @@ mkfullsysroot: $(SYSROOT_DIR)
 
 install_headers: install_hvlibc_header install_hvos_header
 
+install_hvlibc: $(INSTALLED_HVLIBC)
+
+
 install_hvlibc_header:
-	SYSROOT_DIR=../$(SYSROOT_DIR) make -C hvlibc install_headers
+	@SYSROOT_DIR=../$(SYSROOT_DIR) make --no-print-directory -C hvlibc install_headers
 
 install_hvos_header:
-	cp -RT src/include $(SYSROOT_DIR)/usr/include
+	@cp -RT src/include $(SYSROOT_DIR)/usr/include
+
+full: fclean fclean_lib install_hvlibc install_headers all
 
 .PHONY: all mkramfs clean hvlibc userspace kernel re fclean run rundbg installbios

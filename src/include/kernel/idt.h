@@ -28,7 +28,7 @@ typedef idt_ptr_t idtr_t;
 
 typedef void (*handler_t)();
 
-void isr_common_handler(register_t *frame);
+void isr_common_handler(registers_t *frame);
 void idt_set_gate(size_t vector, void *handler, uint8_t attr);
 void idt_reload(void);
 

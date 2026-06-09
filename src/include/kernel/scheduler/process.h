@@ -2,12 +2,11 @@
 #define HVOS_PROCESS_H
 
 #include <stdint.h>
+#include <sys/types.h>
 #include "kernel/reg.h"
-#include "kernel/scheduler/task_state.h"
 #include "kernel/defs/list.h"
 #include "mem/paging.h"
 
-typedef uint64_t pid_t;
 
 
 
@@ -40,7 +39,7 @@ typedef struct pcb_s {
 
 extern list_t* process_list;
 extern pcb_t* current_process;
-extern register_t saved_context;
+extern registers_t saved_context;
 
 
 

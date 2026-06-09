@@ -1,13 +1,11 @@
 #ifndef HVOS_VFS_H
 #define HVOS_VFS_H
 
+#include "fdtable.h"
+#include "sync.h"
 #include <stdint.h>
 #include <sys/types.h>
 #include <stddef.h>
-#include "kernel/boot.h"
-#include "klibc/printf.h"
-#include "klibc/string.h"
-#include "klibc/sys/types.h"
 
 #define VFS_FILE 0x01
 #define VFS_DIR 0x02
@@ -110,6 +108,7 @@ typedef struct dentry_s {
 } dentry_t;
 
 typedef struct file_s {
+	spinlock_t f_lock;
 	dentry_t *f_dentry;
 	uint64_t f_pos;
 	file_ops_t *f_ops;
@@ -118,6 +117,7 @@ typedef struct file_s {
 extern dentry_t *root_dentry;
 
 extern volatile struct limine_module_request module_request;
+
 
 
 void vfs_init(void);

@@ -7,7 +7,6 @@
 #include "kernel/vfs.h"
 #include "kernel/syscall_id.h"
 #include "kernel/elf.h"
-#include "kernel/elf.h"
 #include <stdint.h>
 
 
@@ -45,10 +44,8 @@ int sys_open(const char *path) {
 	return -1;
 }
 
-int sys_read(int fd, uint8_t *buffer, uint32_t size) {
-
+long sys_read(unsigned int fd, char *buffer, size_t size) {
 	if (buffer == NULL || size == 0) return -1;
-	
 	if (fd == 0) {
 		uint32_t bytes_read = 0;
 		uint32_t written = 0;
@@ -80,8 +77,8 @@ int sys_read(int fd, uint8_t *buffer, uint32_t size) {
 	if (fd < 0 || fd >= MAX_FD || open_files[fd] == NULL) return -1;
 	return vfs_read(open_files[fd], (char *)buffer,  size);
 }
-
-int sys_write(int fd, uint8_t *buffer, uint32_t size) {
+/*
+long sys_write(unsigned int fd, const char *buffer, size_t size) {
 	if (buffer == NULL || size == 0) return -1;
 	if (fd == 1) {
 		for (uint32_t i = 0; i < size; i++) {
@@ -101,7 +98,7 @@ int sys_write(int fd, uint8_t *buffer, uint32_t size) {
 	}
 	return -1;
 }
-
+*/
 void sys_print(const char *str) {
 	kprintf("%s", str);
 }
@@ -110,7 +107,7 @@ void sys_exit(int code) {
 	task_t *ct = get_current_task();
 	//kprintf("\n[KERNEL] process %d exited with code: %d\n", ct->pid, code);
 	ct->state = STATE_DEAD;
-	asm volatile("int $0x30");
+	__asm__ volatile("int $0x30");
 }
 
 int sys_exec(const char *path) {

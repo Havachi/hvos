@@ -158,7 +158,10 @@ char *kstrrchr(const char *s, int c) {
 	return last;
 }
 
-
+void *kmemset(void *s, int c, size_t n) {
+	memset(s,c,n);
+}
+/*
 void *kmemset(void *s, int c, size_t n) {
 	uint8_t *sb = (uint8_t *)s;
 	uint8_t bc = (uint8_t )c;
@@ -195,4 +198,5 @@ void *kmemset(void *s, int c, size_t n) {
 
 	return s;
 }
-
+#endif
+*/

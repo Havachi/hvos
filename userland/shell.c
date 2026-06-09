@@ -19,8 +19,9 @@ void clear_buffer() {
 }
 
 void ls() {
-
+	
 }
+
 cmd_t *parse_cmd(const char *input) {
 	cmd_t *cmd = malloc(sizeof(cmd_t));
 	cmd->tokens = calloc(sizeof(char) * 32, 3);

@@ -3,9 +3,11 @@
 #include "kernel/scheduler/task.h"
 #include "kernel/scheduler/task_state.h"
 #include "kernel/vfs.h"
+
 #include "mem/mem.h"
 #include "klibc/printf.h"
 #include <stdint.h>
+#include <string.h>
 #include <sys/types.h>
 
 uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
@@ -20,8 +22,8 @@ uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 	// allocate new pml4, get both physical and virtual addresses
 	uint64_t pml4_phys = (uint64_t)pmm_alloc();
 	pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(pml4_phys);
-	kmemset(pml4_virt, 0, PAGE_SIZE);
-	kmemcpy(pml4_virt, kernel_pml4, PAGE_SIZE);  // inherit kernel mappings
+	memset(pml4_virt, 0, PAGE_SIZE);
+	memcpy(pml4_virt, kernel_pml4, PAGE_SIZE);  // inherit kernel mappings
 
 	elf64_pheader_t *pheaders = (elf64_pheader_t *)(elf_buffer + header->e_phoff);
 
@@ -55,7 +57,7 @@ uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 					byte_to_copy = PAGE_SIZE - dest_page_offset;
 				}
 
-				kmemcpy((void *)PHYS_TO_VIRT(phys_frame) + dest_page_offset,
+				memcpy((void *)PHYS_TO_VIRT(phys_frame) + dest_page_offset,
 						elf_buffer + ph->p_offset + file_read_offset,
 						byte_to_copy);
 				bytes_copied = byte_to_copy + dest_page_offset;
@@ -64,7 +66,7 @@ uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 			}
 			// zero remainder (handles .bss)
 			if (bytes_copied < PAGE_SIZE)
-				kmemset((void *)(PHYS_TO_VIRT(phys_frame) + bytes_copied),
+				memset((void *)(PHYS_TO_VIRT(phys_frame) + bytes_copied),
 						0, PAGE_SIZE - bytes_copied);
 		}
 	}

@@ -13,8 +13,8 @@ This makes me happy.
 		- [x] mmap/munmap
 	- [x] Implement liballoc function in userspace
 
-- [ ] Find a solution for the growing userspace libs
-	- [ ] Make hvlibc
+- [x] Find a solution for the growing userspace libs
+	- [x] Make hvlibc
 - [ ] Filesystem (a big piece)
 	- [ ] Make current VFS more complete
 	- [ ] Disk driver

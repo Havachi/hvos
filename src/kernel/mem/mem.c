@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "limine.h"
+#include "mem/lowmem.h"
 #include "mem/paging.h"
 
 #include <stddef.h>
@@ -235,4 +236,18 @@ void init_mem(struct limine_memmap_response *memmap) {
 	}
 	set_cr3((uint64_t)new_pml4_phys);
 	heap_init();
+}
+
+bool is_valid_user_address(const void *addr, size_t size) {
+	uintptr_t start = (uintptr_t)addr;
+	uintptr_t end = start + size;
+	if (end < start) {
+		return false;
+	}
+
+	if (end > USER_SPACE_END) {
+		return false;
+	}
+
+	return true;
 }

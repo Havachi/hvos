@@ -65,4 +65,6 @@ void init_mem(struct limine_memmap_response* memmap);
 void map_page(pml4_table_t *pml4_virt, uint64_t vaddr, uint64_t paddr, uint64_t flags);
 pml4_table_t *create_new_pml4(void);
 
+
+bool is_valid_user_address(const void *addr, size_t size);
 #endif

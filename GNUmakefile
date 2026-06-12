@@ -1,6 +1,10 @@
 # Nuke built-in rules.
 .SUFFIXES:
 
+
+HVOS_VERSION_MAJOR := 0
+HVOS_VERSION_MINOR := 2
+
 # This is the name that our final executable will have.
 # Change as needed.
 override OUTPUT := hvos
@@ -82,6 +86,8 @@ override CFLAGS += \
 	-ggdb \
 	--sysroot=$(SYSROOT_DIR) \
 	-isystem=/usr/include \
+	-DHVOS_VERSION_MAJOR=\"$(HVOS_VERSION_MAJOR)\" \
+	-DHVOS_VERSION_MINOR=\"$(HVOS_VERSION_MINOR)\" \
 	-O0
 
 # Internal C preprocessor flags that should not be changed by the user.
@@ -254,6 +260,9 @@ install_hvlibc_header:
 install_hvos_header:
 	@cp -RT src/include $(SYSROOT_DIR)/usr/include
 
-full: fclean fclean_lib install_hvlibc install_headers all
+fclean_sysroot:
+	rm -rf $(SYSROOT_DIR)
+
+full: fclean fclean_lib fclean_sysroot mkbasesysroot install_hvlibc install_headers all
 
 .PHONY: all mkramfs clean hvlibc userspace kernel re fclean run rundbg installbios

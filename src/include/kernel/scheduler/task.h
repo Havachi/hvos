@@ -22,6 +22,7 @@ typedef struct task_s {
     uint64_t heap_end;
     struct task_s *parent;
     struct task_s *next;
+    int exit_code;
 } __packed task_t;
 
 task_t *new_idle_task();

@@ -30,7 +30,6 @@ void kmain(void) {
 	fb = framebuffer_request.response->framebuffers[0];
 	kernel_initialize();
     clear_screen();
-	print("Welcome to HVOS v0.1\n");
 	printf("Term: %dx%d\n", fb->width, fb->height);
 	uint64_t ram_bytes = total_pages * 4096;
 	print_available_ram(ram_bytes);

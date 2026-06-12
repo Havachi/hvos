@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "hvos.h"
 
 static char input_buffer[128];
@@ -51,9 +52,9 @@ int exec_cmd(const char *cmd) {
 }
 
 int main(void) {
-	user_print("\nWelcome to HVOS 0.1\n");
+	printf("\nWelcome to HVOS %d.%d\n", HVOS_VERSION_MAJOR, HVOS_VERSION_MINOR);
 	while (1) {
-		user_print(prompt);
+		printf("%s", prompt);
 		index = 0;
 		while (1) {
 			char c;

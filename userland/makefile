@@ -7,7 +7,8 @@ SYSROOT ?= ../sysroot
 LIBDIR := $(SYSROOT)/usr/lib
 INCDIR := $(SYSROOT)/usr/include
 
-CFLAGS := --sysroot=$(SYSROOT) -isystem $(INCDIR) -D__hvos__ -g -o2 -Wall -Wextra
+CFLAGS := --sysroot=$(SYSROOT) -isystem $(INCDIR) -D__hvos__ -g -o2 -Wall -Wextra -DHVOS_VERSION_MAJOR=\"$(HVOS_VERSION_MAJOR)\" \
+	-DHVOS_VERSION_MINOR=\"$(HVOS_VERSION_MINOR)\"
 LDFLAGS := -m elf_x86_64 --sysroot=$(SYSROOT) -L$(LIBDIR)
 
 CRT0    := $(LIBDIR)/crt0.o

@@ -3,11 +3,11 @@
 #include "kernel/sync.h"
 #include "kernel/time.h"
 #include "kernel/video.h"
-#include <stdio.h>
 #include "kernel/vfs.h"
 #include "kernel/syscall_id.h"
 #include "kernel/elf.h"
 #include <stdint.h>
+#include <stdio.h>
 
 
 static file_t* open_files[MAX_FD] = {NULL};
@@ -77,7 +77,9 @@ long sys_read(unsigned int fd, char *buffer, size_t size) {
 	if (fd < 0 || fd >= MAX_FD || open_files[fd] == NULL) return -1;
 	return vfs_read(open_files[fd], (char *)buffer,  size);
 }
-/*
+
+
+
 long sys_write(unsigned int fd, const char *buffer, size_t size) {
 	if (buffer == NULL || size == 0) return -1;
 	if (fd == 1) {
@@ -92,13 +94,13 @@ long sys_write(unsigned int fd, const char *buffer, size_t size) {
 	}
 	if (fd == 2) {
 		for (uint32_t i = 0; i < size; i++) {
-			printf_err("%c", buffer[i]);
+			fprintf(stderr, "%c", buffer[i]);
 		}
 		return size;
 	}
 	return -1;
 }
-*/
+
 void sys_print(const char *str) {
 	printf("%s", str);
 }

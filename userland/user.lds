@@ -1,8 +1,8 @@
 ENTRY(_start)
 PHDRS
 {
-    text_seg PT_LOAD FLAGS(5);
-    data_seg PT_LOAD FLAGS(5);
+    text PT_LOAD FLAGS(5);
+    data PT_LOAD FLAGS(6);
 }
 
 SECTIONS
@@ -10,21 +10,23 @@ SECTIONS
     . = 0x400000;
 
     .text : {
-        *(.text)
-    } :text_seg
+        KEEP(*(.text._start))
+        KEEP(*(SORT_NONE(.text)))
+        *(.text .text.*)
+    } :text
 
     .rodata : {
-        *(.rodata)
-    } :text_seg
+        *(.rodata .rodata.*)
+    } :text
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . = ALIGN(0x1000);
 
     .data : {
-        *(.data)
-    } :data_seg
+        *(.data .data.*)
+    } :data
 
     .bss : {
-        *(.bss)
+        *(.bss .bss.*)
         *(COMMON)
-    } :data_seg
+    } :data
 }

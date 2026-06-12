@@ -8,8 +8,8 @@ override OUTPUT := hvos
 USER_OUTPUT_INIT := init.elf
 
 # User controllable toolchain and toolchain prefix.
-TOOLCHAIN :=
-TOOLCHAIN_PREFIX :=
+TOOLCHAIN := x86_64-elf
+TOOLCHAIN_PREFIX := 
 ifneq ($(TOOLCHAIN),)
 	ifeq ($(TOOLCHAIN_PREFIX),)
 		TOOLCHAIN_PREFIX := $(TOOLCHAIN)-
@@ -63,6 +63,7 @@ override CFLAGS += \
 	-Wextra \
 	-std=gnu11 \
 	-ffreestanding \
+	-nostdlib \
 	-fno-stack-protector \
 	-fno-stack-check \
 	-fno-lto \
@@ -80,6 +81,7 @@ override CFLAGS += \
 	-mcmodel=kernel \
 	-ggdb \
 	--sysroot=$(SYSROOT_DIR) \
+	-isystem=/usr/include \
 	-O0
 
 # Internal C preprocessor flags that should not be changed by the user.
@@ -103,6 +105,8 @@ override LDFLAGS += \
 	-static \
 	-z max-page-size=0x1000 \
 	--gc-sections \
+	--sysroot=$(SYSROOT_DIR) \
+	-L$(SYSROOT_DIR)/usr/lib\
 	-T linker.lds
 
 # Use "find" to glob all *.c, *.S, and *.asm files in the tree and obtain the
@@ -141,9 +145,9 @@ all: bin/$(OUTPUT) $(USERLANDPROG)
 -include $(HEADER_DEPS)
 
 # Link rules for the final executable.
-bin/$(OUTPUT): GNUmakefile linker.lds $(OBJ)
+bin/$(OUTPUT): GNUmakefile linker.lds $(INSTALLED_HVLIBC) $(OBJ)
 	@mkdir -p "$(dir $@)"
-	@$(LD) $(LDFLAGS) $(OBJ) -o $@
+	@$(LD) $(LDFLAGS) $(OBJ) -lc -o $@
 
 # Compilation rules for *.c files.
 obj/%.c.o: %.c GNUmakefile

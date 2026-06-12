@@ -50,7 +50,7 @@ int exec_cmd(const char *cmd) {
 	}
 }
 
-void main(void) {
+int main(void) {
 	user_print("\nWelcome to HVOS 0.1\n");
 	while (1) {
 		user_print(prompt);
@@ -87,4 +87,5 @@ void main(void) {
 	}
 
 	exit(7);
+	return 0;
 }

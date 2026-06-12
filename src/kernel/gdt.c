@@ -4,8 +4,8 @@
 #include "asm/desc.h"
 #include "asm/asm.h"
 #include "kernel/smp.h"
-#include "klibc/string.h"
 #include <stdint.h>
+#include <string.h>
 #include "mem/paging.h"
 
 static gdt_t **gdt_list;
@@ -21,8 +21,8 @@ static void set_gdt_tss_gate (gdt_desc_t* entry, uint64_t base, uint64_t limit) 
 
 	gdt_desc_t *tss_1 = entry;
 	gdt_desc_t *tss_2 = entry + 1;
-	kmemset(tss_1, 0, sizeof(gdt_desc_t));
-	kmemset(tss_2, 0, sizeof(gdt_desc_t));
+	memset(tss_1, 0, sizeof(gdt_desc_t));
+	memset(tss_2, 0, sizeof(gdt_desc_t));
 
 	tss_1->limit0 = limit & 0xFFFF;
 	tss_1->base0 = base & 0xFFFF;
@@ -66,7 +66,7 @@ void init_gdt(){
 	gdt_list = (gdt_t **) kmalloc(sizeof(gdt_t *) * cores);
 	for (uint32_t i = 0; i < cores; i++) {
 		void *gdt_mem = kmalloc(sizeof(gdt_t) + 0x10);
-		kmemset(gdt_mem, 0, sizeof(gdt_t) + 0x10);
+		memset(gdt_mem, 0, sizeof(gdt_t) + 0x10);
 		gdt_list[i] = (gdt_t *)gdt_mem;
 	}
 }
@@ -91,14 +91,14 @@ void init_gdt_local(){
 	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_DEFAULT_USER_DS],0,0xFFFFFFFF,DESC_DATA64 | DESC_USER);
 	set_gdt_gate(&local_gdt->entries[GDT_ENTRY_DEFAULT_USER_CS],0,0xFFFFFFFF,DESC_CODE64 | DESC_USER);
 
-	kmemset(&local_gdt->tss, 0, sizeof(tss_entry_t));
+	memset(&local_gdt->tss, 0, sizeof(tss_entry_t));
 	set_gdt_tss_gate(&local_gdt->entries[GDT_ENTRY_TSS],
 		(uint64_t)&local_gdt->tss,
 		sizeof(tss_entry_t) - 1
 	);
-	asm volatile("lgdt %0" : : "m" (ptr): "memory");
+	__asm__ volatile("lgdt %0" : : "m" (ptr): "memory");
 
-	asm volatile(
+	__asm__ volatile(
 		"movw %0, %%ax\n"
 		"movw %%ax, %%ds\n"
 		"movw %%ax, %%es\n"
@@ -113,7 +113,7 @@ void init_gdt_local(){
 		: : "i"(__KERNEL_DS), "i"(__KERNEL_CS) : "rax", "memory"
 	);
 
-	asm volatile(
+	__asm__ volatile(
 		"mov %0, %%ax\n"
 		"ltr %%ax\n"
 		: : "i"(__TSS_SEG) : "ax", "memory"

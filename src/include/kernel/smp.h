@@ -2,7 +2,7 @@
 #define HVOS_SMP_H
 
 #include <stdint.h>
-#include "klibc/printf.h"
+#include <stdio.h>
 #include "kernel/acpi.h"
 #include "kernel/local_apic.h"
 #include "kernel/pit.h"

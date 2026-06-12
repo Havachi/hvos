@@ -1,6 +1,6 @@
 #include "mem/mem.h"
 #include "kernel/sync.h"
-#include "klibc/string.h"
+#include <string.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -90,7 +90,7 @@ void *kcalloc(size_t n, size_t size) {
 		return NULL;
 	}
 
-	kmemset(ptr, 0, total_size);
+	memset(ptr, 0, total_size);
 
 	return ptr;
 }
@@ -116,7 +116,7 @@ void *krealloc(void *p, size_t new_n, size_t new_size, size_t old_total_size) {
 	}
 
 	size_t copy_size = (old_total_size < new_total_size) ? old_total_size : new_total_size;
-	kmemcpy(new_ptr, p, copy_size);
+	memcpy(new_ptr, p, copy_size);
 	kfree(p);
 	return new_ptr;
 }

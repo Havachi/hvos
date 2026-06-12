@@ -102,7 +102,7 @@ void _scroll_up() {
     size_t copy_size_bytes = total_fb_size - scroll_dist_bytes;
 
     // Shift screen text up cleanly directly on the physical graphic card buffer
-    kmemmove(fb_bytes, fb_bytes + scroll_dist_bytes, copy_size_bytes);
+    memmove(fb_bytes, fb_bytes + scroll_dist_bytes, copy_size_bytes);
 
     // Wipe the trailing row to the clean terminal background color
     uint32_t pixels_per_pitch_row = fb->pitch / 4;

@@ -1,8 +1,8 @@
 #include "kernel/gdt.h"
 #include "kernel/scheduler/mt.h"
 #include "kernel/scheduler/task_state.h"
-#include "klibc/printf.h"
-#include "klibc/string.h"
+#include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 
 #define MAX_VRUNTIME  200

@@ -1,5 +1,4 @@
-#include "klibc/string.h"
-#include "klibc/printf.h"
+#include <string.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -64,7 +63,7 @@ char *litoa(uint64_t num, char* str, int radix) {
 	return str;
 }
 
-void	*kmemcpy(void *restrict dest, const void *restrict src, size_t n) {
+void	*memcpy(void *restrict dest, const void *restrict src, size_t n) {
 	unsigned char *d = (unsigned char *)dest;
 	const unsigned char *s = (const unsigned char *)src;
 
@@ -87,7 +86,7 @@ void	*kmemcpy(void *restrict dest, const void *restrict src, size_t n) {
 	return dest;
 }
 
-size_t kstrlen(const char *str){
+size_t strlen(const char *str){
 	const char *end = str;
 	if (str == NULL)
 		return 0;
@@ -104,7 +103,7 @@ size_t kstrnlen(const char *str, const size_t n){
 	return len;
 }
 
-int kstrcmp(const char *s1, const char *s2) {
+int strcmp(const char *s1, const char *s2) {
 	const unsigned char *p1 = (const unsigned char *)s1;
 	const unsigned char *p2 = (const unsigned char *)s2;
 
@@ -131,23 +130,23 @@ int kstrncmp(const char *s1, const char *s2, register size_t n) {
 	return 0;
 }
 
-char *kstrncpy(char *s1, const char *s2, register size_t n) {
+char *strncpy(char *s1, const char *s2, register size_t n) {
 	size_t len = kstrnlen(s2, n);
-	kmemcpy(s1, s2, len);
+	memcpy(s1, s2, len);
 	if (len < n)
-		kmemset(s1 +len, '\0', n - len);
+		memset(s1 +len, '\0', n - len);
 	return s1;
 }
 
 char *kstrcat(char *dest, const char *src) {
-	char *end = (char *)dest + kstrlen(dest);
-	kstrncpy(end, src, kstrlen((char *)src));
-	end = end + kstrlen((char *)src);
+	char *end = (char *)dest + strlen(dest);
+	strncpy(end, src, strlen((char *)src));
+	end = end + strlen((char *)src);
 	*end = '\0';
 	return dest;
 }
 
-char *kstrrchr(const char *s, int c) {
+char *strrchr(const char *s, int c) {
 	char *last = NULL;
 	char target = (char)c;
 	do {
@@ -158,11 +157,11 @@ char *kstrrchr(const char *s, int c) {
 	return last;
 }
 
-void *kmemset(void *s, int c, size_t n) {
+void *memset(void *s, int c, size_t n) {
 	memset(s,c,n);
 }
 /*
-void *kmemset(void *s, int c, size_t n) {
+void *memset(void *s, int c, size_t n) {
 	uint8_t *sb = (uint8_t *)s;
 	uint8_t bc = (uint8_t )c;
 

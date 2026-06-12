@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include "kernel/glyphs.h"
 #include "limine.h"
-#include "klibc/string.h"
+#include <string.h>
 #include "kernel/boot.h"
 
 #define WHITE 0xFFFFFFFF

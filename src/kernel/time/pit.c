@@ -1,6 +1,6 @@
 #include "kernel/pit.h"
 
-#include "klibc/printf.h"
+#include <stdio.h>
 
 volatile uint64_t g_pit_ticks;
 extern uint8_t *g_local_apic_address;

@@ -1,6 +1,6 @@
 #include "kernel/print.h"
 #include <stdarg.h>
-
+/*
 void printverbose(int verbosity, char *str, ...) {
 	if (VERBOSITY >= verbosity){
 		va_list args;
@@ -9,3 +9,4 @@ void printverbose(int verbosity, char *str, ...) {
 		va_end(args);
 	}
 }
+*/

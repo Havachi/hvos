@@ -1,6 +1,6 @@
 #include "drivers/keyboard.h"
 #include "drivers/scancode.h"
-#include "klibc/printf.h"
+#include <stdio.h>
 #include "cpu/io.h"
 
 uint32_t kdb_queue_occupancy = 0;
@@ -44,7 +44,7 @@ void keyboard_handler_c(void) {
 				kdb_queue_occupancy -=1;
 				kdb_queue[kdb_queue_occupancy] = 0;
 			}
-			kprintf("\b");
+			printf("\b");
 			return;
 		}
 */

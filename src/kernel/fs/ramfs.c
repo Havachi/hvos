@@ -1,8 +1,9 @@
 #include "kernel/vfs.h"
 #include "mem/mem.h"
-#include <stdatomic.h>
 #include <sys/types.h>
 #include "kernel/fs/ramfs.h"
+#include <string.h>
+#include <stdlib.h>
 
 static inode_ops_t ramfs_iops;
 static file_ops_t ramfs_fops;
@@ -13,7 +14,7 @@ static dentry_t * ramfs_lookup(inode_t *dir, dentry_t *dentry) {
 
 	for (size_t i = 0; i < dir_data->child_count; i++) {
 		dentry_t *child = dir_data->children[i];
-		if (kstrcmp(child->d_name, dentry->d_name) == 0) {
+		if (strcmp(child->d_name, dentry->d_name) == 0) {
 			free_dentry(dentry);
 			return child;
 		}
@@ -33,12 +34,12 @@ static inode_t *ramfs_create_inode(mode_t mode) {
 
 	if (mode & S_IFDIR) {
 		ramfs_dir_data_t *ddata = kmalloc(sizeof(ramfs_dir_data_t));
-		kmemset(ddata, 0, sizeof(ramfs_dir_data_t));
+		memset(ddata, 0, sizeof(ramfs_dir_data_t));
 		ino->i_private = ddata;
 		ino->i_size = 0;
 	} else {
 		ramfs_file_data_t *fdata = kmalloc(sizeof(ramfs_file_data_t));
-		kmemset(fdata, 0, sizeof(ramfs_file_data_t));
+		memset(fdata, 0, sizeof(ramfs_file_data_t));
 		ino->i_private = fdata;
 		ino->i_size = 0;
 	}
@@ -79,7 +80,7 @@ static ssize_t ramfs_read(file_t *filp, char *buf, size_t size, uint64_t *offset
 		size += inode->i_size - *offset;
 	}
 
-	kmemcpy(buf, fdata->buffer, size);
+	memcpy(buf, fdata->buffer, size);
 	*offset += size;
 	return size;
 }
@@ -97,14 +98,14 @@ static ssize_t ramfs_write(file_t *filp, const char *buf, size_t size, uint64_t 
 		char *new_buffer = kmalloc(new_cap);
 		if (!new_buffer) return -1;
 		if (fdata->buffer) {
-			kmemcpy(new_buffer, fdata->buffer, inode->i_size);
+			memcpy(new_buffer, fdata->buffer, inode->i_size);
 			kfree(fdata->buffer);
 		}
 		fdata->buffer = new_buffer;
 		fdata->capacity = new_cap;
 	}
 
-	kmemcpy(fdata->buffer + *offset, buf, size);
+	memcpy(fdata->buffer + *offset, buf, size);
 	*offset += size;
 
 	if (*offset > inode->i_size) {
@@ -117,14 +118,14 @@ static ssize_t ramfs_write(file_t *filp, const char *buf, size_t size, uint64_t 
 
 void ramfs_init() {
 	inode_t *root_inode = kmalloc(sizeof(inode_t));
-	kmemset(root_inode, 0, sizeof(inode_t));
+	memset(root_inode, 0, sizeof(inode_t));
 	root_inode->i_ino = 2;
 	root_inode->i_mode = S_IFDIR;
 	root_inode->i_op = &ramfs_iops;
 	root_inode->i_fop = &ramfs_fops;
 
 	ramfs_dir_data_t *ddata = kmalloc(sizeof(ramfs_dir_data_t));
-	kmemset(ddata, 0, sizeof(ramfs_dir_data_t));
+	memset(ddata, 0, sizeof(ramfs_dir_data_t));
 	root_inode->i_private = ddata;
 
 	root_dentry = alloc_dentry("/", root_inode, NULL);

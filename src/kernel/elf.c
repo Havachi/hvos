@@ -5,7 +5,7 @@
 #include "kernel/vfs.h"
 
 #include "mem/mem.h"
-#include "klibc/printf.h"
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
@@ -14,7 +14,7 @@ uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 	elf64_header_t *header = (elf64_header_t *)elf_buffer;
 
 	if (*(uint32_t *)header->e_ident != ELF_MAGIC) {
-		kprintf("[ELF] Invalid magic\n");
+		printf("[ELF] Invalid magic\n");
 		kfree(elf_buffer);
 		return 0;
 	}
@@ -39,7 +39,7 @@ uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 		for (uint64_t off = 0; off < total_size; off += PAGE_SIZE) {
 			uint64_t phys_frame = (uint64_t)pmm_alloc();
 			if (!phys_frame) {
-				kprintf("[ELF] Out of memory\n");
+				printf("[ELF] Out of memory\n");
 				return 0;
 			}
 			map_page(pml4_virt, vaddr_page + off, phys_frame,
@@ -103,7 +103,7 @@ task_t *create_elf_task(uint8_t *elf_buffer) {
 int elf_load_and_run(const char *path) {
 	file_t *file = vfs_open(path, 0);
 	if (!file) {
-		kprintf("[ELF] %s: No such file or directory\n", path);
+		printf("[ELF] %s: No such file or directory\n", path);
 		return -1;
 	}
 

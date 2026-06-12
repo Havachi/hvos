@@ -13,7 +13,8 @@
 #include "kernel/syscall.h"
 #include "kernel/vfs.h"
 #include "kernel/video.h"
-#include "klibc/printf.h"
+#include <stdio.h>
+
 
 extern void keyboard_handler_c(void);
 extern char __bss_start, __bss_end;
@@ -23,7 +24,7 @@ uint8_t kernel_stack[KERNEL_STACK_SIZE] __aligned(16);
 
 void hcf(void) {
 	for (;;) {
-		asm ("hlt");
+		__asm__ ("hlt");
 	}
 }
 
@@ -42,15 +43,15 @@ static void verify_boot_environment(void) {
 
 static void enable_sse(void) {
 	uint64_t cr0,cr4;
-	asm volatile("mov %%cr0, %0" : "=r"(cr0));
+	__asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
 	cr0 &= ~(1ULL << 2);
 	cr0 |= (1ULL << 1);
-	asm volatile("mov %0, %%cr0" :: "r"(cr0));
+	__asm__ volatile("mov %0, %%cr0" :: "r"(cr0));
 
-	asm volatile("mov %%cr4, %0" : "=r"(cr4));
+	__asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
 	cr4 |= (1ULL << 9);
 	cr4 |= (1ULL << 10);
-	asm volatile("mov %0, %%cr4" :: "r"(cr4));
+	__asm__ volatile("mov %0, %%cr4" :: "r"(cr4));
 
 }
 
@@ -77,7 +78,7 @@ void kernel_initialize(void) {
 	intr_init();
 	init_syscall();
 	init_multitasking();
-	kprintf("multitasking enabled\n");
+	printf("multitasking enabled\n");
 	kbd_init();
 	
 	sti();
@@ -87,5 +88,5 @@ void kernel_initialize(void) {
 
 	//asm volatile("cli; hlt");
 
-	kprintf("KERNEL INIT DONE!\n");
+	printf("KERNEL INIT DONE!\n");
 }

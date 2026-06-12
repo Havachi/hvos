@@ -1,5 +1,6 @@
 #include "kernel/syscall.h"
 
+/*
 SYSCALL_DEFINE3(write, unsigned int, fd, const char *, buf, size_t, count) {
 	struct fd f = fdget_pos(fd);
 	ssize_t ret = -EBADF;
@@ -13,4 +14,4 @@ SYSCALL_DEFINE3(write, unsigned int, fd, const char *, buf, size_t, count) {
 	}
 
 	return ret;
-}
+}*/

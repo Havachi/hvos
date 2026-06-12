@@ -3,14 +3,9 @@
 #include "mem/mem.h"
 #include "kernel/local_apic.h"
 #include "kernel/io_apic.h"
-#include "kernel/print.h"
-#include "klibc/string.h"
 #include <stdint.h>
-
-#ifdef PRINTV
-#undef 	PRINTV
-#endif
-#define PRINTV(...) printverbose(6, __VA_ARGS__)
+#include <stdio.h>
+#include <string.h>
 
 //Globals
 
@@ -32,8 +27,6 @@ uintptr_t lapic_virt_base;
 static void acpi_parse_facp(acpi_fadt *facp) {
 	if (facp->smi_command_port){
 
-	} else {
-		PRINTV("ACPI already enabled\n");
 	}
 }
 
@@ -50,7 +43,6 @@ static void acpi_parse_apic(acpi_madt_t *madt) {
 
 
 	uint32_t madt_len = madt->header.length;
-	PRINTV("Local APIC Address = %016lx\n", local_apic_phys);
 	g_local_apic_address = (uint8_t *) (uintptr_t)(madt->local_apic_address + hhdm_offset);
 	uint8_t *current_entry = (uint8_t *)madt + 44;
 	uint8_t *end = (uint8_t *)madt + madt_len;
@@ -60,7 +52,7 @@ static void acpi_parse_apic(acpi_madt_t *madt) {
 		uint8_t entry_len = current_entry[1];
 
 		if (entry_len == 0) {
-			kprintf("Error: Malformed MADT entry with length 0\n");
+			printf("Error: Malformed MADT entry with length 0\n");
 			break;
 		}
 		madt_lapic_t *lapic = NULL;
@@ -70,7 +62,7 @@ static void acpi_parse_apic(acpi_madt_t *madt) {
 			case APIC_TYPE_LOCAL_APIC:
 				lapic = (madt_lapic_t *)current_entry;
 				if ((lapic->flags & 1) || (lapic->flags & 2)) {
-					kprintf("Found CPU Core - ACPI ID: %d, APIC ID: %d\n", lapic->acpi_processor_id, lapic->apic_id);
+					printf("Found CPU Core - ACPI ID: %d, APIC ID: %d\n", lapic->acpi_processor_id, lapic->apic_id);
 					register_cpu_core(lapic->apic_id);
 				}
 				break;
@@ -79,11 +71,11 @@ static void acpi_parse_apic(acpi_madt_t *madt) {
 				uint64_t ioapic_phys = (uint64_t)ioapic->io_apic_address;
 				map_page(kernel_pml4, PHYS_TO_VIRT(ioapic_phys), ioapic_phys, PTE_PRESENT | PTE_WRITABLE | PTE_PCD);
 				g_io_apic_addr = (uint8_t *)(PHYS_TO_VIRT(ioapic_phys));
-				kprintf("Found I/O APIC - ID: %d, Address: %016lx, GSI Base: %d\n", ioapic->io_apic_id, ioapic->io_apic_address, ioapic->global_system_interrupt_base);
+				printf("Found I/O APIC - ID: %d, Address: %016lx, GSI Base: %d\n", ioapic->io_apic_id, ioapic->io_apic_address, ioapic->global_system_interrupt_base);
 				break;
 			case APIC_TYPE_INTERRUPT_OVERRIDE:
 				iso = (madt_iso_t *) current_entry;
-				kprintf("Found Interrupt Override - ISA IRQ %d -> GSI Pin %d\n", iso->source, iso->bus);
+				printf("Found Interrupt Override - ISA IRQ %d -> GSI Pin %d\n", iso->source, iso->bus);
 				break;
 			default:
 				break;
@@ -97,12 +89,11 @@ static void acpi_parse_dt(acpi_sdt_header_t *header) {
 
 	char sig[5] = {0};
 
-	kstrcpy(sig, signature);
+	strcpy(sig, signature);
 	sig[4] = '\0';
-	PRINTV("%s \n", sig);
-	if (!kstrncmp(sig, "FACP", 4)) {
+	if (!strncmp(sig, "FACP", 4)) {
 		acpi_parse_facp((acpi_fadt *)header);
-	} else if (!kstrncmp(sig, "MADT", 4) || !kstrncmp(sig, "APIC", 4)) {
+	} else if (!strncmp(sig, "MADT", 4) || !strncmp(sig, "APIC", 4)) {
 		acpi_parse_apic((acpi_madt_t *)header);
 	}
 }
@@ -127,24 +118,17 @@ static void acpi_parse_xsdt(acpi_header_t *xsdt) {
 }
 
 static bool acpi_parse_rsdp() {
-	PRINTV("RSDP found\n");
 	if (s_rsdp->checksum == 0) {
-		PRINTV("checksum failed\n");
 		return false;
 	}
-	PRINTV("OEM = %s\n", s_rsdp->oem_id);
 	if (s_rsdp->revision == 0) {
-		PRINTV("Version 1\n");
 		acpi_parse_rsdt((acpi_rsdt_t *)(uintptr_t)(s_rsdp->rsdt_address + hhdm_offset));
 	} else if (s_rsdp->revision == 2) {
-		PRINTV("Version 2\n");
 		if (s_rsdp->xsdt_address) {
 			acpi_parse_xsdt((acpi_header_t *)(uintptr_t)s_rsdp->xsdt_address);
 		} else {
 			acpi_parse_rsdt((acpi_rsdt_t *)(uintptr_t)s_rsdp->rsdt_address);
 		}
-	} else {
-		PRINTV("Unsupported ACPI version %d\n", s_rsdp->revision);
 	}
 	return true;
 }

@@ -2,7 +2,7 @@
 #define HVOS_IDT_H
 #include <stdint.h>
 #include "asm/asm.h"
-#include "klibc/printf.h"
+#include <stdio.h>
 #include "kernel/reg.h"
 #include "mem/lowmem.h"
 

@@ -1,7 +1,7 @@
 #include "mem/mem.h"
 #include "kernel/boot.h"
-#include "klibc/printf.h"
-#include "klibc/string.h"
+#include <stdio.h>
+#include <string.h>
 #include "limine.h"
 #include "mem/paging.h"
 
@@ -84,12 +84,12 @@ void init_bitmap(struct limine_memmap_response *memmap) {
 		}
 	}
 	if (bitmap == NULL){
-		kprintf("FAILED TO ALLOCATE BITMAP");
+		printf("FAILED TO ALLOCATE BITMAP");
 		for (;;){
 			asm volatile("hlt");
 		}
 	}
-	kmemset(bitmap, 0xFF, bitmap_size);
+	memset(bitmap, 0xFF, bitmap_size);
 	for (uint32_t i = 0; i < memmap->entry_count; i++) {
 		struct limine_memmap_entry *e = memmap->entries[i];
 		if (e->type == LIMINE_MEMMAP_USABLE){
@@ -108,7 +108,7 @@ uint64_t *alloc_page_table() {
 	if (!phys_addr) return NULL;
 
 	uint64_t *virt_addr = (uint64_t *)PHYS_TO_VIRT(phys_addr);
-	kmemset(virt_addr, 0, PAGE_SIZE);
+	memset(virt_addr, 0, PAGE_SIZE);
 	return (uint64_t *)phys_addr;
 }
 
@@ -121,7 +121,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 		if (!pml4_entry->present) {
 			uint64_t *new_table = alloc_page_table();
 			if (new_table == NULL) {
-				kprintf("KERNEL PANIC: Out of physical memory\n");
+				printf("KERNEL PANIC: Out of physical memory\n");
 				for(;;) asm volatile("hlt");
 			}
 			pml4_entry->present = 1;
@@ -136,7 +136,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 		if (!pdpt_entry->present) {
 			uint64_t *new_table = alloc_page_table();
 			if (new_table == NULL) {
-				kprintf("KERNEL PANIC: Out of physical memory\n");
+				printf("KERNEL PANIC: Out of physical memory\n");
 				for(;;) asm volatile("hlt");
 			}
 			pdpt_entry->present = 1;
@@ -151,7 +151,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 		if (!pd_entry->present) {
 			uint64_t *new_table = alloc_page_table();
 			if (new_table == NULL) {
-				kprintf("KERNEL PANIC: Out of physical memory\n");
+				printf("KERNEL PANIC: Out of physical memory\n");
 				for(;;) asm volatile("hlt");
 			}
 			pd_entry->present = 1;
@@ -196,8 +196,8 @@ pml4_table_t *create_new_pml4(void) {
     uint64_t pml4_phys = (uint64_t)pmm_alloc();
     pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(pml4_phys);
 
-    kmemset(pml4_virt, 0, PAGE_SIZE);
-	kmemcpy(pml4_virt, kernel_pml4, PAGE_SIZE);
+    memset(pml4_virt, 0, PAGE_SIZE);
+	memcpy(pml4_virt, kernel_pml4, PAGE_SIZE);
     return pml4_virt;
 }
 
@@ -216,7 +216,7 @@ void init_mem(struct limine_memmap_response *memmap) {
 	uint64_t new_pml4_phys = (uint64_t)pmm_alloc();
 	kernel_pml4 = (pml4_table_t *)PHYS_TO_VIRT(new_pml4_phys);
 
-	kmemcpy(kernel_pml4, old_pml4, PAGE_SIZE);
+	memcpy(kernel_pml4, old_pml4, PAGE_SIZE);
 
 	map_ram(memmap);
 
@@ -228,7 +228,7 @@ void init_mem(struct limine_memmap_response *memmap) {
 	asm volatile("mov %%rsp, %0" : "=r"(rsp));
 	if (!(rsp >= hhdm_offset && rsp < (hhdm_offset + top_ram)) && !(rsp >= (uint64_t)kernel_vaddr && rsp < ((uint64_t) kernel_vaddr + kernel_size))){
 		//should map stack
-		kprintf("STACK NOT MAPPED !");
+		printf("STACK NOT MAPPED !");
 		for(;;) {
 			asm volatile("hlt");
 		}

@@ -3,5 +3,6 @@ CompileFlags:
     - --target=x86_64-hvos
     - -ffreestanding
     - -std=c11
-    - --sysroot=sysroot
-    - -lc
+    - --sysroot=/home/h/src/projects/hvos/sysroot
+    - -isystem=/home/h/src/projects/hvos/sysroot/usr/include
+    - -nobuiltininc

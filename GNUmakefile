@@ -54,6 +54,9 @@ ifeq ($(CC_IS_CLANG),1)
 		-target x86_64-unknown-none-elf
 endif
 
+
+SYSROOT_DIR?=sysroot
+
 # Internal C flags that should not be changed by the user.
 override CFLAGS += \
 	-Wall \
@@ -76,7 +79,7 @@ override CFLAGS += \
 	-mno-red-zone \
 	-mcmodel=kernel \
 	-ggdb \
-	--sysroot=sysroot \
+	--sysroot=$(SYSROOT_DIR) \
 	-O0
 
 # Internal C preprocessor flags that should not be changed by the user.
@@ -121,7 +124,6 @@ USERLANDDIR := userland
 USERLANDSRC := $(USERLANDDIR)/init.c $(USERLANDDIR)/shell.c
 USERLANDPROG := bin/init.elf bin/shell.elf
 USERLANDLIB := $(USERLANDDIR)/hvos.c
-SYSROOT_DIR?=sysroot
 
 USER_CFLAGS := -Wall -Wextra -std=gnu11 -ffreestanding \
 	 -static -no-pie -fno-pie -fno-stack-protector -fno-stack-check \

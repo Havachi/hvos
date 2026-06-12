@@ -3,6 +3,8 @@
 #include "kernel/fs/tar.h"
 #include "mem/mem.h"
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 
 dentry_t *root_dentry = NULL;
@@ -27,7 +29,7 @@ inode_t *alloc_inode(void) {
 	inode_t *node = (inode_t *)kmalloc(sizeof(inode_t));
 	if (!node) return NULL;
 
-	kmemset(node, 0, sizeof(inode_t));
+	memset(node, 0, sizeof(inode_t));
 	node->i_ino = 0;
 	node->i_mode = 0;
 	node->i_size = 0;
@@ -47,7 +49,7 @@ dentry_t *alloc_dentry(const char *name, inode_t *inode, dentry_t *parent) {
 	if (!entry) return NULL;
 
 	if (name) {
-		kstrncpy(entry->d_name, name, sizeof(entry->d_name) - 1);
+		strncpy(entry->d_name, name, sizeof(entry->d_name) - 1);
 		entry->d_name[sizeof(entry->d_name)-1] = '\0';
 	}
 
@@ -64,7 +66,7 @@ void vfs_init(void) {
 
 	struct limine_module_response *response = module_request.response;
 	if (response == NULL || response->module_count == 0) {
-		kprintf("[VFS] No ramdisk found :(\n");
+		printf("[VFS] No ramdisk found :(\n");
 		return;
 	}
 	
@@ -73,7 +75,7 @@ void vfs_init(void) {
 
 	ramfs_init();
 	ramfs_from_tar(tar_ptr, tar_size);
-	kprintf("[VFS] Filesystem setup completed cleanly\n");
+	printf("[VFS] Filesystem setup completed cleanly\n");
 }
 
 file_t *vfs_open(const char *path, int flags) {
@@ -112,11 +114,11 @@ dentry_t *vfs_lookup(const char *path) {
 	const char *next = path;
 
 	while ((next = next_path_token(next, token)) != NULL) {
-		if (kstrcmp(token, ".") == 0) {
+		if (strcmp(token, ".") == 0) {
 			continue;
 		}
 		
-		if (kstrcmp(token, "..") == 0) {
+		if (strcmp(token, "..") == 0) {
 			if (current->d_parent) {
 				current = current->d_parent;
 			}
@@ -144,12 +146,12 @@ dentry_t *vfs_lookup(const char *path) {
 
 bool vfs_split_path(const char *path, char *out_dir, size_t dir_max, char *out_filename, size_t file_max) {
 	if (!path || *path != '/' || !out_dir || !out_filename) return false;
-	const char *last_slash = kstrrchr(path, '/');
+	const char *last_slash = strrchr(path, '/');
 	if (!last_slash) return false;
 
 	if (path == last_slash && *(last_slash + 1) == '\0') {
 		if (dir_max < 2 || file_max < 1) return false;
-		kstrcpy(out_dir, "/");
+		strcpy(out_dir, "/");
 		out_filename[0] = '\0';
 		return true;
 	}
@@ -161,7 +163,7 @@ bool vfs_split_path(const char *path, char *out_dir, size_t dir_max, char *out_f
 	}
 
 	const char *filename_start = last_slash + 1;
-	size_t file_len = kstrlen(filename_start);
+	size_t file_len = strlen(filename_start);
 
 	if(file_len == 0) {
 		return false;
@@ -172,13 +174,13 @@ bool vfs_split_path(const char *path, char *out_dir, size_t dir_max, char *out_f
 	}
 
 	if (last_slash == path) {
-		kstrcpy(out_dir, "/");
+		strcpy(out_dir, "/");
 	} else {
-		kstrncpy(out_dir, path, dir_len);
+		strncpy(out_dir, path, dir_len);
 		out_dir[dir_len] = '\0';
 	}
 
-	kstrcpy(out_filename, filename_start);
+	strcpy(out_filename, filename_start);
 	return true;
 }
 

@@ -1,17 +1,17 @@
-#include "klibc/printf.h"
-#include "klibc/string.h"
+#include <stdio.h>
+#include <string.h>
 #include "kernel/video.h"
 #include "kernel/sync.h"
 static safe_lock_t print_lock = {0};
-
-void kprintf(const char * format, ...) {
+/*
+void printf(const char * format, ...) {
 	va_list args;
 	va_start(args, format);
 	kvprintf(format, args);
 	va_end(args);
 }
 
-void kprintf_err(const char * format, ...) {
+void printf_err(const char * format, ...) {
 	uint32_t oldfgc = get_fgc();
 	set_fgc(RED);
 	va_list args;
@@ -73,7 +73,7 @@ void kvsprintf(char *str, const char *fmt, va_list args){
 			case 's':{
 				const char *s = va_arg(args, const char *);
 				if (!s) s = "(null)";
-				int len = kstrlen(s);
+				int len = strlen(s);
 				if (ljust) {
 					kstrcat(str, s);
 					str += len;					
@@ -93,7 +93,7 @@ void kvsprintf(char *str, const char *fmt, va_list args){
 				int is_neg = (i < 0);
 				uint32_t val = is_neg ? -i : i;
 				itoa(val, buf, 10);
-				int len = kstrlen(buf) + (is_neg ? 1 : 0);
+				int len = strlen(buf) + (is_neg ? 1 : 0);
 				if (is_neg) *str++ = '-';
 				for (int j = 0; j < width - len; j++) *str++ = padding;
 				kstrcat(str, buf);
@@ -111,7 +111,7 @@ void kvsprintf(char *str, const char *fmt, va_list args){
 					int i = va_arg(args, int);
                 	itoa(i, buf, 16);
 				}
-                int len = kstrlen(buf) + 2;
+                int len = strlen(buf) + 2;
                 
                 kstrcat(str, "0x");
                 for (int j = 0; j < width - (len-2); j++) *str++ = padding;
@@ -123,7 +123,7 @@ void kvsprintf(char *str, const char *fmt, va_list args){
             	uintptr_t ptr = (uintptr_t)va_arg(args, void *);
                 char buf[32];
                 itoa(ptr, buf, 16);
-                int len = kstrlen(buf) + 2;
+                int len = strlen(buf) + 2;
                 
 				kstrcat(str, "0x");
                 for (int j = 0; j < width - len; j++) *str++ = padding;
@@ -190,7 +190,7 @@ void kvprintf(const char *format, va_list args) {
 			case 's':{
 				const char *s = va_arg(args, const char *);
 				if (!s) s = "(null)";
-				int len = kstrlen(s);
+				int len = strlen(s);
 				if (ljust) {
 					print(s);
 					for (int i = 0; i < width - len; i++) put_char(padding);
@@ -208,7 +208,7 @@ void kvprintf(const char *format, va_list args) {
 				int is_neg = (i < 0);
 				uint32_t val = is_neg ? -i : i;
 				itoa(val, buf, 10);
-				int len = kstrlen(buf) + (is_neg ? 1 : 0);
+				int len = strlen(buf) + (is_neg ? 1 : 0);
 				if (is_neg)put_char('-');
 				for (int j = 0; j < width - len; j++) put_char(padding);
 				print(buf);
@@ -225,7 +225,7 @@ void kvprintf(const char *format, va_list args) {
 					int i = va_arg(args, int);
                 	itoa(i, buf, 16);
 				}
-                int len = kstrlen(buf) + 2;
+                int len = strlen(buf) + 2;
                 
                 print("0x");
                 for (int j = 0; j < width - (len-2); j++) put_char(padding);
@@ -236,7 +236,7 @@ void kvprintf(const char *format, va_list args) {
              uintptr_t ptr = (uintptr_t)va_arg(args, void *);
                 char buf[32];
                 itoa(ptr, buf, 16);
-                int len = kstrlen(buf) + 2;
+                int len = strlen(buf) + 2;
                 
                 print("0x");
                 for (int j = 0; j < width - len; j++) put_char(padding); // Padding
@@ -253,4 +253,4 @@ void kvprintf(const char *format, va_list args) {
 		}
 	}
 	safe_unlock(&print_lock, flags);
-}
+}*/

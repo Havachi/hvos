@@ -1,6 +1,6 @@
-#include "klibc/printf.h"
+#include <stdio.h>
 #include "mem/mem.h"
-#include "klibc/string.h"
+#include <string.h>
 #include <stdint.h>
 
 #define HEAP_INIT_PAGES 128
@@ -20,7 +20,7 @@ void heap_expand(uint64_t size_needed) {
 	for (uint64_t i = 0; i < pages; i++) {
 		uint64_t phys = (uint64_t)pmm_alloc();
 		if (!phys) {
-			kprintf("KERNEL PANIC: heap_expand: OOM\n");
+			printf("KERNEL PANIC: heap_expand: OOM\n");
 			for (;;) asm volatile("hlt");
 		}
 		map_page(kernel_pml4, heap_current_limit, phys, PTE_PRESENT | PTE_WRITABLE);

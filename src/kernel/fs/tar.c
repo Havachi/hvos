@@ -23,18 +23,18 @@ void ramfs_from_tar(uint8_t *tar_addr, size_t tar_size) {
 			break;
 		}
 
-		if (kstrncmp(header->magic, "ustar", 5) != 0) {
+		if (strncmp(header->magic, "ustar", 5) != 0) {
 			break;
 		}
 		uint64_t file_size = octal_to_int(header->size, 12);
 
 		char absolute_path[256];
 		absolute_path[0] = '/';
-		kstrncpy(absolute_path+1, header->name, sizeof(absolute_path) - 2);
+		strncpy(absolute_path+1, header->name, sizeof(absolute_path) - 2);
 		absolute_path[sizeof(absolute_path) - 1] = '\0';
 
 		if (header->typeflag == TAR_TYPE_DIR) {
-			size_t len = kstrlen(absolute_path);
+			size_t len = strlen(absolute_path);
 			if (len > 1 && absolute_path[len - 1] == '/') {
 				absolute_path[len-1] = '\0';
 			}

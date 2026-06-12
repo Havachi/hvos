@@ -2,8 +2,8 @@
 #include "kernel/scheduler/mt.h"
 #include "kernel/scheduler/task_state.h"
 #include "kernel/sync.h"
-#include "klibc/printf.h"
-#include "klibc/string.h"
+#include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 
 safe_lock_t pid_lock = {.locked = 0};
@@ -13,7 +13,7 @@ extern void new_task_setup();
 
 void kernel_idle_loop(void) {
 	for(;;) {
-		kprintf("idling\n");
+		printf("idling\n");
 		asm volatile("hlt");
 	}
 }
@@ -51,7 +51,7 @@ task_t *new_user_task(uint64_t rip, uint64_t user_stack, uint64_t kernel_stack) 
 	uint8_t *krsp = (uint8_t *) kernel_stack;
 	krsp -= sizeof(new_task_kernel_stack_t);
 	new_task_kernel_stack_t *stack = (new_task_kernel_stack_t*)krsp;
-	kmemset(stack, 0, sizeof(new_task_kernel_stack_t));
+	memset(stack, 0, sizeof(new_task_kernel_stack_t));
 	stack->rbx = ds;
 	stack->rip = rip;
 	stack->cs = cs;

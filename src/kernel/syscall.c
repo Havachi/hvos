@@ -3,7 +3,7 @@
 #include "kernel/sync.h"
 #include "kernel/time.h"
 #include "kernel/video.h"
-#include "klibc/printf.h"
+#include <stdio.h>
 #include "kernel/vfs.h"
 #include "kernel/syscall_id.h"
 #include "kernel/elf.h"
@@ -32,7 +32,7 @@ int sys_open(const char *path) {
 	if (path[0] == '/') path++;
 	dentry_t *dentry = vfs_lookup(path);
 	if (dentry == NULL) {
-		kprintf("[SYSCALL] sys_open: %s: No such file or directory\n", path);
+		printf("[SYSCALL] sys_open: %s: No such file or directory\n", path);
 		return -1;
 	}
 	for (int i = 0; i < MAX_FD; i++) {
@@ -66,7 +66,7 @@ long sys_read(unsigned int fd, char *buffer, size_t size) {
 						written--;
 					}
 				}
-				kprintf("%c", c); 
+				printf("%c", c); 
 				if (c == '\n') break;
 			}
 
@@ -85,14 +85,14 @@ long sys_write(unsigned int fd, const char *buffer, size_t size) {
 			if (buffer[i] == 0x02){
 				clear_screen();
 			} else {
-				kprintf("%c", buffer[i]);
+				printf("%c", buffer[i]);
 			}
 		}
 		return size;
 	}
 	if (fd == 2) {
 		for (uint32_t i = 0; i < size; i++) {
-			kprintf_err("%c", buffer[i]);
+			printf_err("%c", buffer[i]);
 		}
 		return size;
 	}
@@ -100,12 +100,12 @@ long sys_write(unsigned int fd, const char *buffer, size_t size) {
 }
 */
 void sys_print(const char *str) {
-	kprintf("%s", str);
+	printf("%s", str);
 }
 
 void sys_exit(int code) {
 	task_t *ct = get_current_task();
-	//kprintf("\n[KERNEL] process %d exited with code: %d\n", ct->pid, code);
+	//printf("\n[KERNEL] process %d exited with code: %d\n", ct->pid, code);
 	ct->state = STATE_DEAD;
 	__asm__ volatile("int $0x30");
 }
@@ -176,7 +176,7 @@ void syscall_handler(stack_frame_t *frame) {
 			sys_exit((int)frame->rdi);
 			break;
 		case SC_YIELD:
-			asm volatile("int $0x20");
+			__asm__ volatile("int $0x20");
 			break;
 		case SC_EXECVE:
 			frame->rax = sys_exec((const char *)frame->rdi);
@@ -185,7 +185,7 @@ void syscall_handler(stack_frame_t *frame) {
 			frame->rax = sys_time((uint64_t *)frame->rdi);
 			break;
 		default:
-			kprintf("Unknown syscall: %d\n", syscall_number);
+			printf("Unknown syscall: %d\n", syscall_number);
 			break;
 	}
 }

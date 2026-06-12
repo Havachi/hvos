@@ -1,6 +1,6 @@
 #ifndef HVOS_PRINT_H
 #define HVOS_PRINT_H
-#include "klibc/printf.h"
+#include <stdio.h>
 
 #ifndef VERBOSITY
 #define VERBOSITY 10

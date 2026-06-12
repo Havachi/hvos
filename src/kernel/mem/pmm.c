@@ -1,6 +1,6 @@
 #include "mem/mem.h"
 #include "kernel/sync.h"
-#include "klibc/string.h"
+#include <string.h>
 #include <stdint.h>
 
 
@@ -40,7 +40,7 @@ void pmm_init(struct limine_memmap_response* memmap) {
 	if (bitmap_phys_addr == 0){
 		for (;;) { asm volatile("hlt"); }
 	}
-	kmemset(bitmap, 0xFF, bitmap_size);
+	memset(bitmap, 0xFF, bitmap_size);
 
 	for (uint64_t i = 0; i < memmap->entry_count; i++) {
 		struct limine_memmap_entry* entry = memmap->entries[i];

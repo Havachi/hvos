@@ -1,11 +1,11 @@
 #ifndef HVOS_VFS_H
 #define HVOS_VFS_H
 
-#include "fdtable.h"
 #include "sync.h"
+#include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/types.h>
-#include <stddef.h>
 
 #define VFS_FILE 0x01
 #define VFS_DIR 0x02

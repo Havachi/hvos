@@ -2,8 +2,8 @@
 #include "cpu/io.h"
 #include <stdint.h>
 #include "kernel/time.h"
-#include "klibc/printf.h"
-#include "klibc/string.h"
+#include <stdio.h>
+#include <string.h>
 #include "mem/mem.h"
 
 datetime_t current_datetime;
@@ -69,7 +69,7 @@ int get_weekday_from_date(datetime_t * dt) {
 char * datetime_to_str(datetime_t * dt) {
     char *ret = kcalloc(22, 1);
     const char * weekday = weekday_map[get_weekday_from_date(dt)];
-	ksprintf(ret, "%s %02d.%02d.%02d %02d:%02d:%02d", weekday, dt->day, dt->month, dt->year, ((dt->hour + 2) % 24), dt->minute, dt->second);
+	sprintf(ret, "%s %02d.%02d.%02d %02d:%02d:%02d", weekday, dt->day, dt->month, dt->year, ((dt->hour + 2) % 24), dt->minute, dt->second);
     return ret;
 }
 

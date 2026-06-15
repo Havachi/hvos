@@ -5,9 +5,8 @@
 #include <sys/types.h>
 #include "kernel/reg.h"
 #include "kernel/defs/list.h"
+#include "kernel/vfs.h"
 #include "mem/paging.h"
-
-
 
 
 typedef struct context_s {
@@ -33,6 +32,7 @@ typedef struct pcb_s {
 	uint64_t	state;
 	uint64_t	time_slice;
 	pd_table_t	*page_dir;
+	file_t 		*file_table[];
 } pcb_t;
 
 

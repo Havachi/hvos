@@ -112,6 +112,7 @@ typedef struct file_s {
 	dentry_t *f_dentry;
 	uint64_t f_pos;
 	file_ops_t *f_ops;
+	int			f_flags;
 } file_t;
 
 extern dentry_t *root_dentry;

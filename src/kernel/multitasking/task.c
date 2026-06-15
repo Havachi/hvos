@@ -2,9 +2,11 @@
 #include "kernel/scheduler/mt.h"
 #include "kernel/scheduler/task_state.h"
 #include "kernel/sync.h"
+#include "drivers/console.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <fcntl.h>
 
 safe_lock_t pid_lock = {.locked = 0};
 static uint64_t next_pid = 0;
@@ -62,5 +64,13 @@ task_t *new_user_task(uint64_t rip, uint64_t user_stack, uint64_t kernel_stack) 
 	task->pid = new_pid();
 	task->kernel_stack_base = (void *)kernel_stack;
 	task->k_rsp = (void *)(uint64_t)krsp;
+
+	for (int i = 0; i < MAX_FILES_PER_PROCESS; i++) {
+		task->file_table[i] = NULL;
+	}
+	task->file_table[0] = create_kernel_console_file(O_RDONLY);
+	task->file_table[1] = create_kernel_console_file(O_WRONLY);
+	task->file_table[2] = create_kernel_console_file(O_WRONLY);
+
 	return task;
 }

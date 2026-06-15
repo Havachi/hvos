@@ -7,6 +7,7 @@
 #include "kernel/syscall_id.h"
 #include "kernel/elf.h"
 #include <errno-list.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -28,56 +29,47 @@ void init_syscall(void) {
     wrmsr(MSR_SFMASK, 0x200); 
 }
 
-int sys_open(const char *path) {
+int sys_open(const char *path, int flags) {
 	if (root_dentry == NULL || path == NULL) return -1;
 	if (path[0] == '/') path++;
-	dentry_t *dentry = vfs_lookup(path);
-	if (dentry == NULL) {
-		printf("[SYSCALL] sys_open: %s: No such file or directory\n", path);
-		return -1;
-	}
-	for (int i = 0; i < MAX_FD; i++) {
-		if (open_files[i] == NULL) {
-			open_files[i] = vfs_open(path, 0);
-			return i;
+
+	int fd = -1;
+	for (int i = 0; i < MAX_FILES_PER_PROCESS; i++) {
+		if (get_current_task()->file_table[i] == NULL) {
+			fd = i;
+			break;
 		}
 	}
-	return -1;
+	if (fd == -1){
+		return -EMFILE;
+	}
+	dentry_t *dentry = vfs_lookup(path);
+	if (!dentry || !dentry->d_inode) {
+		fprintf(stderr, "[SYSCALL] sys_open: %s: No such file or directory\n", path);
+		return -ENOENT;
+	}
+
+	file_t *file = kmalloc(sizeof(file_t));
+	if (!file) {
+		return -ENOMEM;
+	}
+	file->f_lock.locked = 0;
+	file->f_dentry = dentry;
+	file->f_pos = 0;
+	file->f_ops = dentry->d_inode->i_fop;
+	get_current_task()->file_table[fd] = file;
+	return fd;
 }
 
 long sys_read(unsigned int fd, char *buffer, size_t size) {
 	if (buffer == NULL || size == 0) return -1;
 
-	if (fd == 0) {
-		uint32_t bytes_read = 0;
-		uint32_t written = 0;
-		while (bytes_read < size) {
-			
-			char c = keyboard_get_char();
-			if (c == 0) {
-				task_t *current_task = get_current_task();
-				current_task->state = STATE_WAITING;
-				continue;
-			} else {
-				*buffer++ = c;
-				return 1;
-				if (c == '\b') {
-					if (written == 0) {
-						continue;
-					} else {
-						written--;
-					}
-				}
-				printf("%c", c); 
-				if (c == '\n') break;
-			}
-
-		}
-		return bytes_read;
+	if ((get_current_task()->file_table[fd]->f_flags & 0x3) == O_WRONLY){
+		return -EBADF;
 	}
 
-	if (fd < 0 || fd >= MAX_FD || open_files[fd] == NULL) return -1;
-	return vfs_read(open_files[fd], (char *)buffer,  size);
+	if (fd < 0 || fd >= MAX_FD || get_current_task()->file_table[fd] == NULL ) return -1;
+	return vfs_read(get_current_task()->file_table[fd], (char *)buffer,  size);
 }
 
 
@@ -86,20 +78,19 @@ long sys_write(unsigned int fd, const char *buffer, size_t size) {
 	/*if (!is_valid_user_address(buffer, size)) {
 		return -EFAULT;
 	}*/
-	if (fd == 1 || fd == 2) {
-		if (fd == 2){
-			set_fgc(RED);
-		}
-		for (size_t i = 0; i < size; i++) {
-			put_char(buffer[i]);
-		}
-		if (fd == 2){
-			set_fgc(WHITE);
-		}
-		return size;
-	} else {
+	if (fd < 0 || fd >= MAX_FILES_PER_PROCESS){
 		return -EBADF;
 	}
+
+	file_t *file = get_current_task()->file_table[fd];
+	if (!file || !file->f_ops || !file->f_ops->write || ((file->f_flags & 0x3) == O_RDONLY)) {
+		return -EBADF;
+	} 
+
+	spin_lock(&file->f_lock);
+	long written = file->f_ops->write(file, buffer, size, &file->f_pos);
+	spin_unlock(&file->f_lock);
+	return written;
 }
 
 void sys_print(const char *str) {
@@ -167,7 +158,7 @@ void syscall_handler(stack_frame_t *frame) {
 			frame->rax = sys_write((int)frame->rdi, (uint8_t *)frame->rsi, (uint32_t)frame->rdx);
 			break;
 		case SC_OPEN:
-			frame->rax = sys_open((const char *)frame->rdi);
+			frame->rax = sys_open((const char *)frame->rdi, (int)frame->rsi);
 			break;
 		case SC_MMAP:
 			frame->rax = sys_alloc_pages(frame->rsi);

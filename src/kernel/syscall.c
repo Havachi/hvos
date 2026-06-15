@@ -47,11 +47,12 @@ int sys_open(const char *path) {
 
 long sys_read(unsigned int fd, char *buffer, size_t size) {
 	if (buffer == NULL || size == 0) return -1;
+
 	if (fd == 0) {
 		uint32_t bytes_read = 0;
 		uint32_t written = 0;
 		while (bytes_read < size) {
-
+			
 			char c = keyboard_get_char();
 			if (c == 0) {
 				task_t *current_task = get_current_task();
@@ -82,12 +83,18 @@ long sys_read(unsigned int fd, char *buffer, size_t size) {
 
 
 long sys_write(unsigned int fd, const char *buffer, size_t size) {
-	if (!is_valid_user_address(buffer, size)) {
+	/*if (!is_valid_user_address(buffer, size)) {
 		return -EFAULT;
-	}
+	}*/
 	if (fd == 1 || fd == 2) {
+		if (fd == 2){
+			set_fgc(RED);
+		}
 		for (size_t i = 0; i < size; i++) {
 			put_char(buffer[i]);
+		}
+		if (fd == 2){
+			set_fgc(WHITE);
 		}
 		return size;
 	} else {
@@ -102,7 +109,6 @@ void sys_print(const char *str) {
 void sys_exit(int code) {
 	task_t *ct = get_current_task();
 	ct->exit_code = code;
-	//printf("\n[KERNEL] process %d exited with code: %d\n", ct->pid, code);
 	ct->state = STATE_DEAD;
 	__asm__ volatile("int $0x30");
 }

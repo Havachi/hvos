@@ -2,6 +2,7 @@
 #include "kernel/scheduler/mt.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static const char *s_exceptionDesc[20] =
 {
@@ -46,12 +47,12 @@ void exception_dump(registers_t regs)
     printf("  cs= %02x\n", regs.cs);
     printf("  ss= %02x\n", regs.ss);
 
-    for (;;) {}
+    abort();
 }
 
 void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
     printf("\n=== PAGE FAULT ===\n");
-    printf("Faulting address (CR2):\t%016lx\n", cr2);
+    printf("Faulting address (CR2):\t%lx\n", cr2);
     printf("Error code:            \t%08lx\n", f->error_code);
 
     printf("Cause: %s %s in %s mode%s%s\n",
@@ -79,13 +80,14 @@ void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
             f->r13, f->r14, f->r15);
 
     printf("\nSystem halted.\n");
-    for (;;) asm volatile("hlt");
+    abort();
 }
 
 void gpf_execption_handler_c(uint64_t rip, uint64_t err) {
     gf_error_code_t err_code = {0};
     err_code._raw = err;
-    printf("GPF!!!!\nRIP: %lx\nERR:%lx\n", rip, err);
+    printf("\n==== General Fault Protection ====\n\n", rip, err);
+    printf("RIP: 0x%lx\nERR:0x%lx\n");
     printf("Error from: ");
     if (err_code.external == 1) {
         printf("External\n");
@@ -97,9 +99,7 @@ void gpf_execption_handler_c(uint64_t rip, uint64_t err) {
     } else if (err_code.tbl == 2) {
         printf("LDT\n");
     }
-    printf("index: %lx\n", err_code.index);
-    printf("Halting cpu !\n");
-    for(;;){
-        asm volatile("hlt");
-    }
+    printf("index: 0x%lx\n", err_code.index);
+    printf("abort !\n");
+    abort();
 }

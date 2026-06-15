@@ -2,12 +2,14 @@ CC := x86_64-elf-gcc
 LD := x86_64-hvos-ld
 AR := x86_64-hvos-ar
 
+HVOS_VERSION_MAJOR ?= 0
+HVOS_VERSION_MINOR ?= 1
 
 SYSROOT ?= ../sysroot
 LIBDIR := $(SYSROOT)/usr/lib
 INCDIR := $(SYSROOT)/usr/include
 
-CFLAGS := --sysroot=$(SYSROOT) -isystem $(INCDIR) -D__hvos__ -g -o2 -Wall -Wextra -DHVOS_VERSION_MAJOR=\"$(HVOS_VERSION_MAJOR)\" \
+CFLAGS := --sysroot=$(SYSROOT) -isystem $(INCDIR) -D__hvos__ -g -O2 -Wall -Wextra -DHVOS_VERSION_MAJOR=\"$(HVOS_VERSION_MAJOR)\" \
 	-DHVOS_VERSION_MINOR=\"$(HVOS_VERSION_MINOR)\"
 LDFLAGS := -m elf_x86_64 --sysroot=$(SYSROOT) -L$(LIBDIR)
 

@@ -116,7 +116,7 @@ void _scroll_up() {
 }
 
 void put_char(char c) {
-    char *g = font8x16[(uint8_t)c];
+    char *g = (char *)font8x16[(uint8_t)c];
     hide_cursor();
     if (c == '\n') {
         _newline();

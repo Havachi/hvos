@@ -1,4 +1,5 @@
 #include "hvos.h"
+#include <stdlib.h>
 
 int main(void) {
     user_print("[INIT]: init\n");

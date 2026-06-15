@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <stddef.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include "kernel/boot.h"
 #include "kernel/time.h"
@@ -18,7 +18,6 @@ void print_available_ram(uint64_t total_bytes) {
     uint64_t gib = mib / 1024;
 
     if (gib > 0) {
-        // Formats as e.g., "Available RAM: 4 GB, 256 MB"
         printf("Available RAM: %d GB\n", gib);
     } else {
         printf("Available RAM: %d MB\n", mib);
@@ -40,6 +39,5 @@ void kmain(void) {
 
 	elf_load_and_run("/init.elf");
 	//create_test_task();
-
-	hcf();
+	abort();
 }

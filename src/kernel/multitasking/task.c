@@ -1,3 +1,4 @@
+#include "asm/asm.h"
 #include "asm/segment.h"
 #include "kernel/scheduler/mt.h"
 #include "kernel/scheduler/task_state.h"
@@ -73,4 +74,15 @@ task_t *new_user_task(uint64_t rip, uint64_t user_stack, uint64_t kernel_stack) 
 	task->file_table[2] = create_kernel_console_file(O_WRONLY);
 
 	return task;
+}
+
+task_t *task_by_pid(uint64_t pid) {
+	cpu_task_list_t *list = get_cpu_task_list();
+	for(uint64_t i = 0; i < list->ready_task_count; i++) {
+		if (list->ready_list[i].pid == pid) {
+			return &list->ready_list[i];
+		}
+	}
+	return NULL;
+
 }

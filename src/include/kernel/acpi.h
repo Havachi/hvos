@@ -174,5 +174,5 @@ typedef struct {
 
 void acpi_init();
 uint32_t acpi_remap_irq(uint32_t irq);
-
+void acpi_reboot();
 #endif

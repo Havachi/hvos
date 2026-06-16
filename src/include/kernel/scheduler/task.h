@@ -35,4 +35,6 @@ typedef struct task_s {
 task_t *new_idle_task();
 task_t *new_task();
 
+task_t *task_by_pid(uint64_t pid);
+
 #endif

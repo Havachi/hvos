@@ -44,7 +44,7 @@ int exec_cmd(const char *cmd) {
 	} else if (strcmp(input_buffer, "open") == 0) {
 		//open();
 	} else if(strcmp(input_buffer, "exit") == 0) {
-		//exit(0);
+		exit(0);
 	} else {
 		fprintf(stderr, "hvsh: command not found: %s \n", input_buffer);
 	}

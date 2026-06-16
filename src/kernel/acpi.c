@@ -17,6 +17,8 @@ static acpi_madt_t *s_madt;
 static acpi_rsdp_t *s_rsdp = NULL;
 static acpi_sdt_header_t *s_rsdt = NULL;
 
+acpi_fadt *fadt = NULL;
+
 uintptr_t lapic_phys_base;
 uintptr_t lapic_virt_base;
 
@@ -93,6 +95,7 @@ static void acpi_parse_dt(acpi_sdt_header_t *header) {
 	sig[4] = '\0';
 	if (!strncmp(sig, "FACP", 4)) {
 		acpi_parse_facp((acpi_fadt *)header);
+		fadt = (acpi_fadt *)header;
 	} else if (!strncmp(sig, "MADT", 4) || !strncmp(sig, "APIC", 4)) {
 		acpi_parse_apic((acpi_madt_t *)header);
 	}
@@ -162,4 +165,15 @@ uint32_t acpi_remap_irq(uint32_t irq){
 		current_entry += entry_len;
 	}
 	return irq;
+}
+
+void acpi_reboot() {
+	if (!fadt)
+		return;
+	if (fadt->reset_reg.address_space == 0) {
+		io_write_8(fadt->reset_reg.address, fadt->reset_value);
+	} else if (fadt->reset_reg.address_space == 1){
+		volatile uint8_t *reg = (volatile uint8_t *)(fadt->reset_reg.address + hhdm_offset);
+		*reg = fadt->reset_value;
+	}
 }

@@ -2,8 +2,8 @@
 .SUFFIXES:
 
 
-HVOS_VERSION_MAJOR := 0
-HVOS_VERSION_MINOR := 2
+export HVOS_VERSION_MAJOR := 0
+export HVOS_VERSION_MINOR := 2
 
 # This is the name that our final executable will have.
 # Change as needed.
@@ -38,7 +38,7 @@ ifeq ($(TOOLCHAIN),llvm)
 endif
 
 # User controllable C flags.
-CFLAGS := -g -Og -pipe -I./src/include -lc
+CFLAGS := -g -Og -pipe -I./src/include
 
 # User controllable C preprocessor flags. We set none by default.
 CPPFLAGS :=
@@ -138,7 +138,7 @@ USERLANDLIB := $(USERLANDDIR)/hvos.c
 USER_CFLAGS := -Wall -Wextra -std=gnu11 -ffreestanding \
 	 -static -no-pie -fno-pie -fno-stack-protector -fno-stack-check \
 	  -O2 -Wl,-T,userland/user.lds \
-	  --sysroot=$(SYSROOT_DIR) -isystem$(SYSROOT_DIR)/usr/include
+	  --sysroot=$(SYSROOT_DIR) -isystem$(SYSROOT_DIR)/usr/include 
 HVLIBC_DIR := hvlibc
 
 INSTALLED_HVLIBC:= $(SYSROOT_DIR)/usr/lib/libc.a
@@ -153,7 +153,7 @@ all: bin/$(OUTPUT) $(USERLANDPROG)
 # Link rules for the final executable.
 bin/$(OUTPUT): GNUmakefile linker.lds $(INSTALLED_HVLIBC) $(OBJ)
 	@mkdir -p "$(dir $@)"
-	@$(LD) $(LDFLAGS) $(OBJ) -lc -o $@
+	@$(LD) $(LDFLAGS) $(OBJ) -lk -o $@
 
 # Compilation rules for *.c files.
 obj/%.c.o: %.c GNUmakefile

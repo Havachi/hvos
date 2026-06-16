@@ -83,15 +83,20 @@ task_t *create_elf_task(uint8_t *elf_buffer) {
 	
 	pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(pml4_phys);
 
-
-	uint64_t user_stack_phys = (uint64_t)pmm_alloc();
-	uint64_t user_stack_virt = USR_STACK_BASE;
-	map_page(pml4_virt, user_stack_virt, user_stack_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+	int num_stack_pages = 6;
+	for (int i = 0; i < num_stack_pages; i++) {
+		uint64_t user_stack_virt = USR_STACK_BASE - (i * PAGE_SIZE);
+		uint64_t user_stack_phys = (uint64_t)pmm_alloc();
+		if (!user_stack_phys){
+			return NULL;
+		}
+		map_page(pml4_virt, user_stack_virt, user_stack_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+	}
 
 	uint64_t k_stack_phys = (uint64_t)pmm_alloc();
-	uint64_t *stack_top = (uint64_t *)PHYS_TO_VIRT(k_stack_phys + PAGE_SIZE);
+	uint64_t kernel_stack_top = (uint64_t)PHYS_TO_VIRT(k_stack_phys) + PAGE_SIZE;
 
-	task_t *new_task = new_user_task(entry_point, user_stack_virt + PAGE_SIZE, (uint64_t)stack_top);
+	task_t *new_task = new_user_task(entry_point, USR_STACK_BASE, kernel_stack_top);
 	new_task->cr3   = pml4_phys;
 	new_task->vruntime = 0;
 	new_task->state = STATE_READY;

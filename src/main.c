@@ -1,5 +1,8 @@
 #include <stddef.h>
 #include <stdint.h>
+#ifndef __KERNEL__
+#define __KERNEL__ 1
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -7,17 +10,6 @@
 #include "kernel/time.h"
 #include "kernel/video.h"
 #include "kernel/elf.h"
-
-extern long (*backend_io_write)(int fd, const char *buf, size_t count);
-extern long console_write(void *file, const char *buf, size_t count, uint64_t *offset);
-
-static long kernel_write_adapter(int fd, const char *buf, size_t count) {
-    if (fd == 1 || fd == 2) {
-        uint64_t dummy = 0;
-        return console_write(NULL, buf, count, &dummy);
-    }
-    return -1;
-}
 
 struct limine_framebuffer *fb = NULL;
 extern void kernel_initialize(void);
@@ -37,8 +29,6 @@ void print_available_ram(uint64_t total_bytes) {
 }
 
 void kmain(void) {
-
-    backend_io_write = kernel_write_adapter;
 	fb = framebuffer_request.response->framebuffers[0];
 	kernel_initialize();
     clear_screen();
@@ -49,8 +39,7 @@ void kmain(void) {
     printf("%s\n", datetime_to_str(now()));
     printf("loading shell\n");
 
-
-	elf_load_and_run("/init.elf");
+	elf_load_and_run("/shell.elf");
 	//create_test_task();
 	abort();
 }

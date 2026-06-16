@@ -50,10 +50,10 @@ void exception_dump(registers_t regs)
     abort();
 }
 
-void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
-    printf("\n=== PAGE FAULT ===\n");
-    printf("Faulting address (CR2):\t%lx\n", cr2);
-    printf("Error code:            \t%08lx\n", f->error_code);
+void unhandled_page_fault(fault_frame_t *f, uint64_t cr2) {
+   printf("\n=== PAGE FAULT ===\n");
+    printf("Faulting address (CR2):\t0x%lx\n", cr2);
+    printf("Error code:            \t0x%lx\n", f->error_code);
 
     printf("Cause: %s %s in %s mode%s%s\n",
         (f->error_code & PF_PRESENT)  ? "protection violation" : "not present",
@@ -66,7 +66,7 @@ void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
     printf("\nRegisters:\n");
     printf("  rip\t%016lx\tcs\t%04lx\trflags\t%016lx\n",
             f->rip, f->cs, f->rflags);
-    printf("  rsp\t%016lx\tss\t%04lx\n",
+    printf("  rsp\t%016lx\tss\t%04lx\n", 
             f->rsp, f->ss);
     printf("  rax\t%016lx\trbx\t%016lx\trcx\t%016lx\n",
             f->rax, f->rbx, f->rcx);
@@ -82,6 +82,27 @@ void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
     printf("\nSystem halted.\n");
     abort();
 }
+
+void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
+    /*
+    bool is_user = (f->error_code & PF_USER) != 0;
+    bool is_present = (f->error_code & PF_PRESENT) != 0;
+    uint64_t stack_limit = USR_STACK_BASE - (16 * PAGE_SIZE);
+    if (is_user && !is_present && cr2 < USR_STACK_BASE && cr2 >= stack_limit) {
+        uint64_t fault_page_virt = cr2 & ~(PAGE_SIZE - 1);
+        uint64_t new_page_phys = (uint64_t)pmm_alloc();
+        if (new_page_phys != 0) {
+            task_t *current_task = get_current_task();
+            pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(current_task->cr3);
+            map_page(pml4_virt, fault_page_virt, new_page_phys, 
+                    PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+            return;
+        }
+    }*/
+    unhandled_page_fault(f,cr2);
+}
+
+
 
 void gpf_execption_handler_c(uint64_t rip, uint64_t err) {
     gf_error_code_t err_code = {0};

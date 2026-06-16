@@ -34,7 +34,7 @@ all: $(BUILD_DIR) $(HVOSLIB_INSTALLED) $(BINS)
 
 $(LIBOBJ): $(LIBSRC)
 	@echo "[CC] $<"
-	@$(CC) $(CFLAGS) -c $< -o $*.o
+	@$(CC) $(CFLAGS) -c $< -o $*.o -lc
 
 $(HVOSLIB): $(LIBOBJ)
 	@echo "[AR] $<"
@@ -43,13 +43,12 @@ $(HVOSLIB): $(LIBOBJ)
 $(HVOSLIB_INSTALLED): $(HVOSLIB)
 	@cp $(HVOSLIB) $(LIBDIR)
 
-
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 	
 $(BUILD_DIR)/%: %.c $(HVOSLIB_INSTALLED) 
 	@echo "[CC] $<"
-	@$(CC) $(CFLAGS) -c $< -o $(BUILD_DIR)/$*.o
+	@$(CC) $(CFLAGS) -c $< -o $(BUILD_DIR)/$*.o 
 	@echo "[LD] $@"
 	$(LD) $(LDFLAGS) -T./user.lds -o $@.elf \
 		$(CRT0) \

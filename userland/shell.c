@@ -50,7 +50,8 @@ int exec_cmd(const char *cmd) {
 }
 
 int main(void) {
-	printf("\nWelcome to HVOS %d.%d\n", 0, 1);
+	clear_buffer();
+	printf("\nWelcome to HVOS %d.%d\n", HVOS_VERSION_MAJOR, HVOS_VERSION_MINOR);
 	while (1) {
 		printf("%s", prompt);
 		index = 0;

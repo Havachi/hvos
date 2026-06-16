@@ -15,5 +15,6 @@ void user_print(const char *str) {
 }
 
 void user_printerr(const char *str) {
-	fprintf(stderr, str);
+
+	printf("[ERROR]: %s", str);
 }

@@ -33,6 +33,7 @@ static long console_read(file_t *file, char *buf, size_t size, uint64_t *offset)
 }
 
 long console_write(file_t *file, const char *buf, size_t count, uint64_t *offset) {
+	(void)file;(void)offset;
 	size_t i = 0;
 	for (i = 0; i < count; i++) {
 		put_char(buf[i]);
@@ -51,5 +52,6 @@ file_t *create_kernel_console_file(int flags) {
 	f->f_dentry = NULL;
 	f->f_pos = 0;
 	f->f_ops = &console_ops;
+	f->f_flags = flags;
 	return f;
 }

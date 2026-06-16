@@ -67,9 +67,8 @@ long sys_read(unsigned int fd, char *buffer, size_t size) {
 	if ((get_current_task()->file_table[fd]->f_flags & 0x3) == O_WRONLY){
 		return -EBADF;
 	}
-
 	if (fd < 0 || fd >= MAX_FD || get_current_task()->file_table[fd] == NULL ) return -1;
-	return vfs_read(get_current_task()->file_table[fd], (char *)buffer,  size);
+	return (long)vfs_read(get_current_task()->file_table[fd], (char *)buffer,  size);
 }
 
 

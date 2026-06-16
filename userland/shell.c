@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -9,7 +10,7 @@ static int index = 0;
 static int history_index = 0;
 static char *olds;
 
-char prompt[7] = "hvos> ";
+char prompt[8] = "hvos> \0";
 
 void clear_buffer() {
 	while (index > 0) {
@@ -76,7 +77,7 @@ int main(void) {
 				clear_buffer();
 				printf("\n");
 				break;
-			} else if(index < 127) {
+			} else if(index < 127 && isgraph(c)) {
 				input_buffer[index++] = c;
 				printf("%c", c);
 			}

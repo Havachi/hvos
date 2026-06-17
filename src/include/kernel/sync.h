@@ -22,7 +22,7 @@ void safe_unlock(safe_lock_t *lock, uint64_t rflags);
 
 static inline uint64_t save_and_disable_interrupt(void) {
 	uint64_t rflags;
-	asm volatile (
+	__asm__ __volatile (
 		"pushfq\n\t"
 		"cli\n\t"
 		"pop %0"
@@ -34,7 +34,7 @@ static inline uint64_t save_and_disable_interrupt(void) {
 }
 
 static inline void restore_interrupts(uint64_t rflags) {
-	asm volatile (
+	__asm__ __volatile (
 		"push %0\n\t"
 		"popfq"
 		:

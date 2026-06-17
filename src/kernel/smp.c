@@ -8,9 +8,9 @@ void ap_entry(struct limine_smp_info *smp_info) {
 
 	printf("Hello from CPU core ID: %d!\n", smp_info->processor_id);
 	__atomic_fetch_add(&g_active_cpu_count, 1, __ATOMIC_SEQ_CST);
-	asm volatile("sti");
+	__asm__ __volatile("sti");
 	for (;;) {
-		asm volatile("hlt");
+		__asm__ __volatile("hlt");
 	}
 }
 

@@ -20,7 +20,7 @@ void init_ap(){
 }
 
 void push_new_task(task_t *task) {
-	cpu_task_list_t *current_cpu_list = cpu_task_lists[local_apic_get_id()];
+	cpu_task_list_t *current_cpu_list = get_cpu_task_list();
 	if (current_cpu_list->ready_list != NULL){
 		current_cpu_list->ready_list->next = task;
 	} else {
@@ -35,7 +35,7 @@ void init_multitasking(){
 
 	for (uint32_t i = 0; i < cpu_count; i++)
 		cpu_task_lists[i] = kmalloc(sizeof(cpu_task_list_t));
-	cpu_task_list_t *bsp_task_list = cpu_task_lists[local_apic_get_id()];
+	cpu_task_list_t *bsp_task_list = get_cpu_task_list();
 	bsp_task_list->ready_list = NULL;
 	bsp_task_list->min_vruntime = 0;
 	bsp_task_list->ready_task_count = 0;

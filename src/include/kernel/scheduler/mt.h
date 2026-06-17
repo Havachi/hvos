@@ -77,7 +77,7 @@ void push_new_task(task_t *task);
 task_t *get_current_task();
 cpu_task_list_t *get_cpu_task_list();
 static inline void yield(void) {
-    asm volatile("int %0"::"i"(INT_SCHEDULER));
+    __asm__ volatile("int %0"::"i"(INT_SCHEDULER));
 }
 
 #endif

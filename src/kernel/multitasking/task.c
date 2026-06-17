@@ -17,7 +17,7 @@ extern void new_task_setup();
 void kernel_idle_loop(void) {
 	for(;;) {
 		printf("idling\n");
-		asm volatile("hlt");
+		__asm__ __volatile("hlt");
 	}
 }
 

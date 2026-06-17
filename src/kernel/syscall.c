@@ -2,7 +2,6 @@
 #include "kernel/scheduler/task_state.h"
 #include "kernel/sync.h"
 #include "kernel/time.h"
-#include "kernel/video.h"
 #include "kernel/vfs.h"
 #include "kernel/syscall_id.h"
 #include "kernel/elf.h"
@@ -12,7 +11,6 @@
 #include <stdio.h>
 
 
-static file_t* open_files[MAX_FD] = {NULL};
 extern task_t tasks[];
 
 extern char keyboard_get_char(void);

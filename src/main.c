@@ -1,9 +1,7 @@
 #include "include/cpu/io.h"
 #include "include/kernel/acpi.h"
-#include "include/kernel/scheduler/mt.h"
 #include "include/kernel/scheduler/task.h"
 #include "kernel/scheduler/task_state.h"
-#include <stddef.h>
 #include <stdint.h>
 #ifndef __KERNEL__
 #define __KERNEL__ 1
@@ -21,7 +19,7 @@ extern void kernel_initialize(void);
 extern uint64_t total_pages;
 
 extern uint32_t g_acpi_cpu_count;
-
+extern uint64_t memmap_get_total_pages(struct limine_memmap_response *memmap);
 void print_available_ram(uint64_t total_bytes) {
     uint64_t mib = total_bytes / (1024 * 1024);
     uint64_t gib = mib / 1024;
@@ -52,20 +50,19 @@ void kmain(void) {
 	kernel_initialize();
     clear_screen();
 	printf("Term: %dx%d\n", fb->width, fb->height);
-	uint64_t ram_bytes = total_pages * 4096;
+	uint64_t ram_bytes = memmap_get_total_pages(memmap_request.response) * 4096;
 	print_available_ram(ram_bytes);
     printf("CPU with %d core\n", g_acpi_cpu_count);
     printf("%s\n", datetime_to_str(now()));
     printf("loading shell\n");
 
-	int pid = elf_load_and_run("/shell.elf");
+	int pid = elf_load_and_run("/init.elf");
     
 	//create_test_task();
     while (task_by_pid(pid) != NULL && task_by_pid(pid)->state != STATE_DEAD){
-        
         __asm__ __volatile("hlt");
     }
-    printf("rebooting...");
-	reboot();
+    //printf("rebooting...");
+	//reboot();
     abort();
 }

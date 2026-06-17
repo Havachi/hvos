@@ -38,7 +38,7 @@ void pmm_init(struct limine_memmap_response* memmap) {
 		}
 	}
 	if (bitmap_phys_addr == 0){
-		for (;;) { asm volatile("hlt"); }
+		for (;;) { __asm__ __volatile("hlt"); }
 	}
 	memset(bitmap, 0xFF, bitmap_size);
 

@@ -13,11 +13,11 @@ typedef struct gdt_page {
 }__aligned(PAGE_SIZE) __packed gdt_page_t;
 
 static inline void load_gdt(const struct desc_ptr *gdtr) {
-	asm volatile("lgdt %0"::"m"(*gdtr));
+	__asm__ __volatile("lgdt %0"::"m"(*gdtr));
 }
 
 static __always_inline void load_idt(const idtr_t *idtr) {
-	asm volatile("lidt %0"::"m" (*idtr));
+	__asm__ __volatile("lidt %0"::"m" (*idtr));
 }
 
 

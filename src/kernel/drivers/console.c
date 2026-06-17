@@ -5,9 +5,9 @@
 
 extern char keyboard_get_char(void);
 
-static long console_read(file_t *file, char *buf, size_t size, uint64_t *offset) {
-	(void)file; (void)offset;
-
+static long console_read(file_t *__file, char *buf, size_t __size, uint64_t *__offset) {
+	(void)__file; (void)__offset;
+	(void)__size;
 	while (1) {
 		char c = keyboard_get_char();
 		if (c == 0) {

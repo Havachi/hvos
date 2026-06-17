@@ -17,6 +17,6 @@ void pit_init(){
 void pit_wait(uint32_t ms){
 	uint64_t now = g_pit_ticks;
 	while(g_pit_ticks - now < ms) {
-		asm volatile("pause");
+		__asm__ __volatile("pause");
 	}
 }

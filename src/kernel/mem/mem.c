@@ -28,16 +28,17 @@ heap_header_t *heap_start = NULL;
 uint64_t heap_current_limit = 0xffffa00000000000;
 
 pml4_table_t *kernel_pml4;
+pml4_table_ptr_t *kernel_pml4_ptr;
 
 
 static uint64_t get_cr3() {
     uint64_t cr3;
-    asm volatile("movq %%cr3, %0":"=r"(cr3));
+    __asm__ __volatile("movq %%cr3, %0":"=r"(cr3));
     return cr3;
 }
 
 static void set_cr3(uint64_t cr3) {
-    asm volatile("movq %0, %%cr3"::"r"(cr3));
+    __asm__ __volatile("movq %0, %%cr3"::"r"(cr3));
 }
 
 static virtual_address_t *new_virt(uint64_t virt) {
@@ -87,7 +88,7 @@ void init_bitmap(struct limine_memmap_response *memmap) {
 	if (bitmap == NULL){
 		printf("FAILED TO ALLOCATE BITMAP");
 		for (;;){
-			asm volatile("hlt");
+			__asm__ __volatile("hlt");
 		}
 	}
 	memset(bitmap, 0xFF, bitmap_size);
@@ -123,7 +124,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 			uint64_t *new_table = alloc_page_table();
 			if (new_table == NULL) {
 				printf("KERNEL PANIC: Out of physical memory\n");
-				for(;;) asm volatile("hlt");
+				for(;;) __asm__ __volatile("hlt");
 			}
 			pml4_entry->present = 1;
 			pml4_entry->rw = 1;
@@ -138,7 +139,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 			uint64_t *new_table = alloc_page_table();
 			if (new_table == NULL) {
 				printf("KERNEL PANIC: Out of physical memory\n");
-				for(;;) asm volatile("hlt");
+				for(;;) __asm__ __volatile("hlt");
 			}
 			pdpt_entry->present = 1;
 			pdpt_entry->rw = 1;
@@ -153,7 +154,7 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 			uint64_t *new_table = alloc_page_table();
 			if (new_table == NULL) {
 				printf("KERNEL PANIC: Out of physical memory\n");
-				for(;;) asm volatile("hlt");
+				for(;;) __asm__ __volatile("hlt");
 			}
 			pd_entry->present = 1;
 			pd_entry->rw = 1;
@@ -203,6 +204,25 @@ pml4_table_t *create_new_pml4(void) {
 }
 
 
+void new_init_mem(struct limine_memmap_response *memmap) {
+	hhdm_offset = hhdm_request.response->offset;
+	top_ram = get_highest_phys_addr(memmap);
+	kernel_size = ((uint64_t)&kernel_end - (uint64_t)&kernel_start);
+
+	init_bitmap(memmap);
+	heap_init();
+	
+	uint64_t old_cr3 = get_cr3() & ~(uint64_t)0xFFF;
+	pml4_table_t *old_pml4 = (pml4_table_t *)PHYS_TO_VIRT(old_cr3);
+
+	kernel_pml4_ptr = init_kernel_paging();
+
+	map_ram(memmap);
+	uint64_t kernel_paddr = kernel_address_request.response->physical_base;
+	virtual_address_t *kernel_vaddr = (virtual_address_t*)kernel_address_request.response->virtual_base;
+	map_kernel(kernel_paddr, kernel_vaddr, kernel_size);
+}
+
 void init_mem(struct limine_memmap_response *memmap) {
 	//Globally set hhdm offset for further uses
 	hhdm_offset = hhdm_request.response->offset;
@@ -216,6 +236,7 @@ void init_mem(struct limine_memmap_response *memmap) {
 
 	uint64_t new_pml4_phys = (uint64_t)pmm_alloc();
 	kernel_pml4 = (pml4_table_t *)PHYS_TO_VIRT(new_pml4_phys);
+	
 
 	memcpy(kernel_pml4, old_pml4, PAGE_SIZE);
 
@@ -226,12 +247,12 @@ void init_mem(struct limine_memmap_response *memmap) {
 	map_kernel(kernel_paddr, kernel_vaddr, kernel_size);
 
 	uint64_t rsp;
-	asm volatile("mov %%rsp, %0" : "=r"(rsp));
+	__asm__ __volatile("mov %%rsp, %0" : "=r"(rsp));
 	if (!(rsp >= hhdm_offset && rsp < (hhdm_offset + top_ram)) && !(rsp >= (uint64_t)kernel_vaddr && rsp < ((uint64_t) kernel_vaddr + kernel_size))){
 		//should map stack
 		printf("STACK NOT MAPPED !");
 		for(;;) {
-			asm volatile("hlt");
+			__asm__ __volatile("hlt");
 		}
 	}
 	set_cr3((uint64_t)new_pml4_phys);

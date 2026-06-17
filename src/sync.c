@@ -3,7 +3,7 @@
 
 void spin_lock(spinlock_t *lock) {
 	while (atomic_exchange(&lock->locked, 1) != 0) {
-		asm volatile("pause");
+		__asm__ volatile("pause");
 	}
 }
 
@@ -15,7 +15,7 @@ uint64_t safe_lock(safe_lock_t *lock) {
 	uint64_t rflags = save_and_disable_interrupt();
 
 	while (atomic_exchange(&lock->locked, 1) != 0) {
-		asm volatile("pause");
+		__asm__ volatile("pause");
 	}
 
 	return rflags;

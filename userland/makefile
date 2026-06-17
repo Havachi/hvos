@@ -9,8 +9,8 @@ SYSROOT ?= ../sysroot
 LIBDIR := $(SYSROOT)/usr/lib
 INCDIR := $(SYSROOT)/usr/include
 
-CFLAGS := --sysroot=$(SYSROOT) -isystem $(INCDIR) -D__hvos__ -g -O0 -Wall -Wextra -DHVOS_VERSION_MAJOR=\"$(HVOS_VERSION_MAJOR)\" \
-	-DHVOS_VERSION_MINOR=\"$(HVOS_VERSION_MINOR)\"
+CFLAGS := --sysroot=$(SYSROOT) -isystem $(INCDIR) -D__hvos__ -g -O0 -Wall -Wextra -DHVOS_VERSION_MAJOR=$(HVOS_VERSION_MAJOR) \
+	-DHVOS_VERSION_MINOR=$(HVOS_VERSION_MINOR)
 LDFLAGS := -m elf_x86_64 --sysroot=$(SYSROOT) -L$(LIBDIR)
 
 CRT0    := $(LIBDIR)/crt0.o
@@ -50,7 +50,7 @@ $(BUILD_DIR)/%: %.c $(HVOSLIB_INSTALLED)
 	@echo "[CC] $<"
 	@$(CC) $(CFLAGS) -c $< -o $(BUILD_DIR)/$*.o 
 	@echo "[LD] $@"
-	$(LD) $(LDFLAGS) -T./user.lds -o $@.elf \
+	@$(LD) $(LDFLAGS) -T./user.lds -o $@.elf \
 		$(CRT0) \
 		$(CRTI) \
 		$(BUILD_DIR)/$*.o \

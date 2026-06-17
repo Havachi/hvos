@@ -19,6 +19,8 @@
 #define USR_STACK_BASE	0x00007FFFFFFFF000
 #define USR_HEAP_BASE	0x10000000
 #define PHYS_TO_VIRT(phys) ((uint64_t)(phys) + hhdm_offset)
+#define VIRT_TO_PHYS(virt) (((uint64_t)(virt) != 0) ? ((uint64_t)(virt) - hhdm_offset) : (uint64_t)(virt))
+
 
 typedef struct heap_header_s {
 	uint64_t size;
@@ -52,7 +54,7 @@ void *kmalloc(uint64_t size);
 void kfree(void *ptr);
 void *kcalloc(size_t n, size_t size);
 void *krealloc(void *p, size_t new_n, size_t new_size, size_t old_total_size);
-
+void *kzalloc(size_t size);
 /*pmm.c*/
 void pmm_init(struct limine_memmap_response* memmap);
 void *pmm_alloc();

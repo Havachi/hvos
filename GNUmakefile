@@ -3,7 +3,7 @@
 
 
 export HVOS_VERSION_MAJOR := 0
-export HVOS_VERSION_MINOR := 2
+export HVOS_VERSION_MINOR := 3
 
 # This is the name that our final executable will have.
 # Change as needed.
@@ -153,21 +153,25 @@ all: bin/$(OUTPUT) $(USERLANDPROG)
 # Link rules for the final executable.
 bin/$(OUTPUT): GNUmakefile linker.lds $(INSTALLED_HVLIBC) $(OBJ)
 	@mkdir -p "$(dir $@)"
+	@echo "[LD] $(notdir $@)"
 	@$(LD) $(LDFLAGS) $(OBJ) -lk -o $@
 
 # Compilation rules for *.c files.
 obj/%.c.o: %.c GNUmakefile
 	@mkdir -p "$(dir $@)"
+	@echo "[CC] $(notdir $@)"
 	@$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.S files.
 obj/%.S.o: %.S GNUmakefile
 	@mkdir -p "$(dir $@)"
+	@echo "[AS] $(notdir $@)"
 	@$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.asm (nasm) files.
 obj/%.asm.o: %.asm GNUmakefile
 	@mkdir -p "$(dir $@)"
+	@echo "[NASM] $(notdir $@)"
 	@nasm $(NASMFLAGS) $< -o $@
 
 $(INITRAMFSFILEPATH): $(USERLANDPROG)
@@ -201,7 +205,7 @@ rundbg: $(ISOOUT) installbios
 	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -d int
 
 run: $(ISOOUT) installbios
-	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -smp 4
+	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 2G -cdrom $(ISOOUT) -monitor stdio -smp 4
 
 # Remove object files and the final executable.
 clean:
@@ -217,7 +221,7 @@ re: fclean $(ISOOUT)
 
 kernel: bin/$(OUTPUT)
 userspace:
-	make -C $(USERLANDDIR)
+	@make -C $(USERLANDDIR)
 
 $(USERLANDPROG): userspace
 	@cp $(USERLANDDIR)/build/*.elf ./bin
@@ -228,7 +232,7 @@ $(INSTALLED_HVLIBC): mkfullsysroot
 	@SYSROOT_DIR=../$(SYSROOT_DIR) make --no-print-directory -C hvlibc install
 
 fclean_lib:
-	make --no-print-directory -C hvlibc fclean
+	@make --no-print-directory -C hvlibc fclean
 
 $(SYSROOT_DIR):
 	@mkdir -p $(SYSROOT_DIR)

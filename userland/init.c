@@ -3,7 +3,8 @@
 
 int main(void) {
     user_print("[INIT]: init\n");
-    if (exec("/shell.elf") < 0) {
+    int pid;
+    if ((pid = exec("/shell.elf")) < 0) {
         user_print("[INIT]: Critical Error: Failed to execute shell\n");
     }
     user_print("[INIT]: init done\n");

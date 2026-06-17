@@ -108,7 +108,7 @@ void gpf_execption_handler_c(uint64_t rip, uint64_t err) {
     gf_error_code_t err_code = {0};
     err_code._raw = err;
     printf("\n==== General Fault Protection ====\n\n", rip, err);
-    printf("RIP: 0x%lx\nERR:0x%lx\n");
+    printf("RIP: 0x%016lx\nERR:0x%lx\n");
     printf("Error from: ");
     if (err_code.external == 1) {
         printf("External\n");

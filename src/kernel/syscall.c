@@ -55,6 +55,7 @@ int sys_open(const char *path, int flags) {
 	file->f_dentry = dentry;
 	file->f_pos = 0;
 	file->f_ops = dentry->d_inode->i_fop;
+	file->f_flags = flags;
 	get_current_task()->file_table[fd] = file;
 	return fd;
 }
@@ -140,6 +141,31 @@ int sys_free_pages(void *ptr, uint32_t pages) {
 		return -1;
 	kfree(ptr);
 	return 0;
+}
+
+int sys_waitid(int which, pid_t pid, void *_infop, int _opt, void *_ru) {
+	cpu_task_list_t *list = get_cpu_task_list();
+	uint64_t i = 0;
+
+	task_t *t = list->ready_list;
+
+	while (t->pid != pid && t->next != NULL) {
+		t = t->next;
+	}
+
+	if (t->pid == pid) {
+
+	}
+}
+
+int sys_fork(void) {
+	task_t *current = get_current_task();
+	task_t *new = 0;
+
+	//int res = clone_process(current, new);
+
+	push_new_task(new);
+
 }
 
 void syscall_handler(stack_frame_t *frame) {

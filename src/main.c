@@ -1,8 +1,11 @@
 #include "include/cpu/io.h"
 #include "include/kernel/acpi.h"
+#include "include/kernel/scheduler/process.h"
 #include "include/kernel/scheduler/task.h"
+#include "include/kernel/scheduler/thread.h"
 #include "kernel/scheduler/task_state.h"
 #include <stdint.h>
+#include <sys/wait.h>
 #ifndef __KERNEL__
 #define __KERNEL__ 1
 #endif
@@ -56,12 +59,9 @@ void kmain(void) {
     printf("%s\n", datetime_to_str(now()));
     printf("loading shell\n");
 
-	int pid = elf_load_and_run("/init.elf");
-    
-	//create_test_task();
-    while (task_by_pid(pid) != NULL && task_by_pid(pid)->state != STATE_DEAD){
-        __asm__ __volatile("hlt");
-    }
+	int pid = execute_elf("/init.elf");
+    printf("[KERNEL] INIT PID %d\n", pid);
+    waitpid(pid);
     //printf("rebooting...");
 	//reboot();
     abort();

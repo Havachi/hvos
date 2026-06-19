@@ -7,5 +7,5 @@
 #include <stdint.h>
 
 file_t *create_kernel_console_file(int flags);
-
+long console_read(file_t *__file, char *buf, size_t __size, uint64_t *__offset);
 #endif

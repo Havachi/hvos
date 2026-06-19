@@ -12,11 +12,14 @@ global gpf_exc
 extern g_pit_ticks
 extern g_local_apic_address
 extern exception_dump
-extern scheduler_c
+extern schedule
 extern keyboard_handler_c
 extern page_fault_handler_c
 extern gpf_execption_handler_c
 extern update_cursor
+extern update_curr_thread
+extern context_switch
+
 default_exception_handler:
 	jmp $
 
@@ -118,10 +121,9 @@ pit_interrupt:
 	mov dword [rax + 0xB0], 0
 
 	call update_cursor
+	call update_curr_thread
 
-	mov rdi, rsp
-	call scheduler_c
-	mov rsp, rax
+	call schedule
 
 	pop rax
 	pop rbx

@@ -75,8 +75,7 @@ uint64_t load_elf_binary(uint8_t *elf_buffer, uint64_t *out_pml4_phys) {
 	return header->e_entry;
 }
 
-task_t *create_elf_task(uint8_t *elf_buffer) {
-
+process_t *create_elf_process(uint8_t *elf_buffer) {
 	uint64_t pml4_phys = 0;
 	uint64_t entry_point = load_elf_binary(elf_buffer, &pml4_phys);
 	if (entry_point == 0) return NULL;
@@ -96,34 +95,29 @@ task_t *create_elf_task(uint8_t *elf_buffer) {
 	uint64_t k_stack_phys = (uint64_t)pmm_alloc();
 	uint64_t kernel_stack_top = (uint64_t)PHYS_TO_VIRT(k_stack_phys) + PAGE_SIZE;
 
-	task_t *new_task = new_user_task(entry_point, USR_STACK_BASE, kernel_stack_top);
-	new_task->cr3   = pml4_phys;
-	new_task->vruntime = 0;
-	new_task->state = STATE_READY;
-	new_task->next  = NULL;
-	new_task->heap_end = USR_HEAP_BASE;
-	return new_task;
+	process_t *proc = new_elf_process(entry_point, USR_STACK_BASE, kernel_stack_top);
+	proc->cr3 = pml4_phys;
+	proc->heap_end = USR_HEAP_BASE;
+	proc->parent = get_current_process();
+	return proc;
 }
 
-int elf_load_and_run(const char *path) {
+int execute_elf(const char *path) {
 	file_t *file = vfs_open(path, 0);
 	if (!file) {
 		printf("[ELF] %s: No such file or directory\n", path);
 		return -1;
 	}
-
 	size_t file_size = file->f_dentry->d_inode->i_size;
 	if (file_size == 0) {
 		kfree(file);
 		return -1;
 	}
-
 	uint8_t *elf_buffer = (uint8_t *)kmalloc(file_size);
 	if (!elf_buffer) {
 		kfree(file);
 		return -1;
 	}
-
 	ssize_t byte_read = vfs_read(file, (char *)elf_buffer, file_size);
 
 	if (byte_read < 0) {
@@ -134,10 +128,8 @@ int elf_load_and_run(const char *path) {
 
 	kfree(file);
 	file = NULL;
-	task_t *new_task = create_elf_task(elf_buffer);
+	process_t *new_task = create_elf_process(elf_buffer);
 	if (!new_task) return -1;
-	new_task->parent = get_current_task();
-	push_new_task(new_task);
+	//new_task->parent = get_current_process();
 	return new_task->pid;
 }
-

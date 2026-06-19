@@ -17,6 +17,7 @@
 #define PTE_NX			(1ULL << 63)
 #define PTE_ADDR_MASK	0x000ffffffffff000
 #define USR_STACK_BASE	0x00007FFFFFFFF000
+#define KERNEL_HEAP_START 0xffffa00000000000
 #define USR_HEAP_BASE	0x10000000
 #define PHYS_TO_VIRT(phys) ((uint64_t)(phys) + hhdm_offset)
 #define VIRT_TO_PHYS(virt) (((uint64_t)(virt) != 0) ? ((uint64_t)(virt) - hhdm_offset) : (uint64_t)(virt))
@@ -47,7 +48,7 @@ int32_t bitmap_test(uint64_t page_index);
 
 /*heap.c*/
 void heap_init();
-void heap_expand(uint64_t size_needed);
+int heap_expand(uint64_t size_needed);
 
 /*kmalloc.c*/
 void *kmalloc(uint64_t size);

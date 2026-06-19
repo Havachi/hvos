@@ -21,4 +21,6 @@
 
 #define SC_TIME			201
 
+#define SC_WAITID		247
+
 #endif

@@ -1,46 +1,38 @@
 #ifndef HVOS_PROCESS_H
 #define HVOS_PROCESS_H
 
+#include "kernel/vfs.h"
 #include <stdint.h>
 #include <sys/types.h>
-#include "kernel/reg.h"
-#include "kernel/defs/list.h"
-#include "kernel/vfs.h"
-#include "mem/paging.h"
 
+#ifndef MAX_FILES_PER_PROCESS
+#define MAX_FILES_PER_PROCESS 32
+#endif
 
-typedef struct context_s {
-	uint64_t eax;
-	uint64_t ecx;
-	uint64_t edx;
-	uint64_t ebx;
-	uint64_t esp;
-	uint64_t ebp;
-	uint64_t esi;
-	uint64_t edi;
-	uint64_t eflags;
+struct thread_s;
+
+typedef struct process_s {
+	uint64_t pid;
 	uint64_t cr3;
-    uint64_t eip;
-} context_t;
+	uint64_t heap_end;
+	struct process_s *parent;
+	int exit_code;
+	bool is_waiting;
+	uint64_t wait_target_pid;
 
-typedef struct pcb_s {
-	char		filename[512];
-	context_t	regs;
-	pid_t		pid;
-	listnode_t*	self;
-	void*		stack;
-	uint64_t	state;
-	uint64_t	time_slice;
-	pd_table_t	*page_dir;
-	file_t 		*file_table[];
-} pcb_t;
+	file_t *file_table[MAX_FILES_PER_PROCESS];
+	uint32_t thread_count;
+	struct thread_s *primary;
+	struct process_s *next;
 
 
+} process_t;
 
-extern list_t* process_list;
-extern pcb_t* current_process;
-extern registers_t saved_context;
+process_t *new_process();
+process_t *new_elf_process(uint64_t rip, uint64_t ustack, uint64_t kstack);
+void free_process(process_t *p);
 
-
+process_t *process_by_pid(uint64_t pid);
+void push_new_process(process_t *p);
 
 #endif

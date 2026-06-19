@@ -1,7 +1,10 @@
 #include "kernel/syscall.h"
+#include "asm/asm.h"
+#include "kernel/gdt.h"
 #include "kernel/scheduler/task_state.h"
 #include "kernel/sync.h"
 #include "kernel/time.h"
+#include "kernel/tss.h"
 #include "kernel/vfs.h"
 #include "kernel/syscall_id.h"
 #include "kernel/elf.h"
@@ -9,6 +12,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
+
 
 
 extern task_t tasks[];
@@ -33,7 +37,7 @@ int sys_open(const char *path, int flags) {
 
 	int fd = -1;
 	for (int i = 0; i < MAX_FILES_PER_PROCESS; i++) {
-		if (get_current_task()->file_table[i] == NULL) {
+		if (get_current_process()->file_table[i] == NULL) {
 			fd = i;
 			break;
 		}
@@ -56,18 +60,18 @@ int sys_open(const char *path, int flags) {
 	file->f_pos = 0;
 	file->f_ops = dentry->d_inode->i_fop;
 	file->f_flags = flags;
-	get_current_task()->file_table[fd] = file;
+	get_current_process()->file_table[fd] = file;
 	return fd;
 }
 
 long sys_read(unsigned int fd, char *buffer, size_t size) {
 	if (buffer == NULL || size == 0) return -1;
 
-	if ((get_current_task()->file_table[fd]->f_flags & 0x3) == O_WRONLY){
+	if ((get_current_process()->file_table[fd]->f_flags & 0x3) == O_WRONLY){
 		return -EBADF;
 	}
-	if (fd < 0 || fd >= MAX_FD || get_current_task()->file_table[fd] == NULL ) return -1;
-	return (long)vfs_read(get_current_task()->file_table[fd], (char *)buffer,  size);
+	if (fd < 0 || fd >= MAX_FD || get_current_process()->file_table[fd] == NULL ) return -1;
+	return (long)vfs_read(get_current_process()->file_table[fd], (char *)buffer,  size);
 }
 
 
@@ -80,7 +84,7 @@ long sys_write(unsigned int fd, const char *buffer, size_t size) {
 		return -EBADF;
 	}
 
-	file_t *file = get_current_task()->file_table[fd];
+	file_t *file = get_current_process()->file_table[fd];
 	if (!file || !file->f_ops || !file->f_ops->write || ((file->f_flags & 0x3) == O_RDONLY)) {
 		return -EBADF;
 	} 
@@ -96,15 +100,25 @@ void sys_print(const char *str) {
 }
 
 void sys_exit(int code) {
-	task_t *ct = get_current_task();
-	ct->exit_code = code;
-	ct->state = STATE_DEAD;
-	__asm__ volatile("int $0x30");
+	cpu_task_list_t *cpu = get_cpu_task_list();
+	process_t *current_proc = get_current_process();
+	thread_t *current_thread = cpu->current_thread;
+	current_proc->exit_code = code;
+	current_thread->state = STATE_DEAD;
+
+	process_t *parent = current_proc->parent;
+	if (parent && parent->is_waiting && parent->wait_target_pid == current_proc->pid) {
+		parent->is_waiting = false;
+		if (parent->primary)
+			parent->primary->state = STATE_READY;
+	}
+	schedule();
+	while(1);
 }
 
 int sys_exec(const char *path) {
 	if (path == NULL) return -1;
-	return elf_load_and_run(path);
+	return execute_elf(path);
 }
 
 int sys_time(uint64_t *ptr) {
@@ -114,10 +128,29 @@ int sys_time(uint64_t *ptr) {
 	return 0;
 }
 
+int sys_waitpid(uint64_t pid) {
+	cpu_task_list_t *cpu = get_cpu_task_list();
+	process_t *current_proc = get_current_process();
+	thread_t *current_thread = cpu->current_thread;
+	process_t *child = process_by_pid(pid);
+	if (!child)
+		return -1;
+	if (child->primary && child->primary->state == STATE_DEAD) {
+		int code = child->exit_code;
+		return code;
+	}
+
+	current_proc->is_waiting = true;
+	current_proc->wait_target_pid = pid;
+	current_thread->state = STATE_WAITING;
+	schedule();
+	return child->exit_code;
+}
+
 uint64_t sys_alloc_pages(uint32_t pages) {
 	if (pages == 0) return 0;
 
-	task_t *ct = get_current_task();
+	process_t *ct = get_current_process();
 	pml4_table_t *pm = (pml4_table_t *) PHYS_TO_VIRT(ct->cr3);
 
 	uint64_t virt_start = ct->heap_end;
@@ -144,28 +177,11 @@ int sys_free_pages(void *ptr, uint32_t pages) {
 }
 
 int sys_waitid(int which, pid_t pid, void *_infop, int _opt, void *_ru) {
-	cpu_task_list_t *list = get_cpu_task_list();
-	uint64_t i = 0;
-
-	task_t *t = list->ready_list;
-
-	while (t->pid != pid && t->next != NULL) {
-		t = t->next;
-	}
-
-	if (t->pid == pid) {
-
-	}
+	return sys_waitpid(pid);
 }
 
 int sys_fork(void) {
-	task_t *current = get_current_task();
-	task_t *new = 0;
-
-	//int res = clone_process(current, new);
-
-	push_new_task(new);
-
+	return -1;
 }
 
 void syscall_handler(stack_frame_t *frame) {
@@ -201,6 +217,9 @@ void syscall_handler(stack_frame_t *frame) {
 		case SC_TIME:
 			frame->rax = sys_time((uint64_t *)frame->rdi);
 			break;
+
+		case SC_WAITID:
+			frame->rax = sys_waitid(frame->rdi, frame->rsi, (void *)frame->rdx, frame->r10, (void *)frame->r8);
 		default:
 			printf("Unknown syscall: %d\n", syscall_number);
 			break;

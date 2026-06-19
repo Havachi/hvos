@@ -28,8 +28,6 @@ heap_header_t *heap_start = NULL;
 uint64_t heap_current_limit = 0xffffa00000000000;
 
 pml4_table_t *kernel_pml4;
-pml4_table_ptr_t *kernel_pml4_ptr;
-
 
 static uint64_t get_cr3() {
     uint64_t cr3;
@@ -203,25 +201,6 @@ pml4_table_t *create_new_pml4(void) {
     return pml4_virt;
 }
 
-
-void new_init_mem(struct limine_memmap_response *memmap) {
-	hhdm_offset = hhdm_request.response->offset;
-	top_ram = get_highest_phys_addr(memmap);
-	kernel_size = ((uint64_t)&kernel_end - (uint64_t)&kernel_start);
-
-	init_bitmap(memmap);
-	heap_init();
-	
-	uint64_t old_cr3 = get_cr3() & ~(uint64_t)0xFFF;
-	pml4_table_t *old_pml4 = (pml4_table_t *)PHYS_TO_VIRT(old_cr3);
-
-	kernel_pml4_ptr = init_kernel_paging();
-
-	map_ram(memmap);
-	uint64_t kernel_paddr = kernel_address_request.response->physical_base;
-	virtual_address_t *kernel_vaddr = (virtual_address_t*)kernel_address_request.response->virtual_base;
-	map_kernel(kernel_paddr, kernel_vaddr, kernel_size);
-}
 
 void init_mem(struct limine_memmap_response *memmap) {
 	//Globally set hhdm offset for further uses

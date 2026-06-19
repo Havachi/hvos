@@ -1,19 +1,24 @@
 #include "kernel/scheduler/mt.h"
 #include "kernel/scheduler/task_state.h"
 #include <drivers/console.h>
+#include <stdio.h>
 #include <string.h>
 
+extern void schedule(void);
 extern char keyboard_get_char(void);
 
-static long console_read(file_t *__file, char *buf, size_t __size, uint64_t *__offset) {
+long console_read(file_t *__file, char *buf, size_t __size, uint64_t *__offset) {
 	(void)__file; (void)__offset;
 	(void)__size;
+	void *console_channel = (void *)console_read;
 	while (1) {
 		char c = keyboard_get_char();
 		if (c == 0) {
-			task_t *current_task = get_current_task();
-			current_task->state = STATE_WAITING;
-			__asm__ __volatile ("int $0x30");
+			cpu_task_list_t *cpu = get_cpu_task_list();
+			thread_t *t = cpu->current_thread;
+			t->block_channel = console_channel;
+			t->state = STATE_WAITING;
+			schedule();
 			continue;
 		}
 		*buf = c;

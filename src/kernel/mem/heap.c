@@ -3,26 +3,35 @@
 #include <string.h>
 #include <stdint.h>
 
-#define HEAP_INIT_PAGES 128
+#define HEAP_INIT_PAGES 8192
+
+extern heap_header_t *heap_free_list;
 
 
 void heap_init(void) {
+	heap_current_limit = KERNEL_HEAP_START;
     heap_start = (heap_header_t *)heap_current_limit;
-	heap_expand(HEAP_INIT_PAGES * PAGE_SIZE);
-    heap_start->size = (HEAP_INIT_PAGES * PAGE_SIZE) - sizeof(heap_header_t);
-    heap_start->is_free = true;
-    heap_start->next = NULL;
+
+	heap_free_list = NULL;
+	uint64_t total_bytes_needed = HEAP_INIT_PAGES * PAGE_SIZE;
+	heap_expand(total_bytes_needed);
+	heap_header_t *init_block = heap_start;
+	init_block->size = (heap_current_limit - (uint64_t)heap_start) - sizeof(heap_header_t);
+	init_block->is_free = true;
+	init_block->next = NULL;
+	heap_free_list = init_block;
+	printf("head size: %d pages", HEAP_INIT_PAGES);
 }
 
-void heap_expand(uint64_t size_needed) {
+int heap_expand(uint64_t size_needed) {
 	uint64_t pages = (size_needed + sizeof(heap_header_t) + PAGE_SIZE - 1) / PAGE_SIZE;
 	for (uint64_t i = 0; i < pages; i++) {
 		uint64_t phys = (uint64_t)pmm_alloc();
 		if (!phys) {
-			printf("KERNEL PANIC: heap_expand: OOM\n");
-			for (;;) __asm__ __volatile("hlt");
+			return -1;
 		}
 		map_page(kernel_pml4, heap_current_limit, phys, PTE_PRESENT | PTE_WRITABLE);
 		heap_current_limit += PAGE_SIZE;
 	}
+	return 0;
 }

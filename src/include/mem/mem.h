@@ -21,7 +21,9 @@
 #define USR_HEAP_BASE	0x10000000
 #define PHYS_TO_VIRT(phys) ((uint64_t)(phys) + hhdm_offset)
 #define VIRT_TO_PHYS(virt) (((uint64_t)(virt) != 0) ? ((uint64_t)(virt) - hhdm_offset) : (uint64_t)(virt))
+#define KERNEL_STACK_SIZE 16384
 
+extern uint8_t kernel_stack[KERNEL_STACK_SIZE] __aligned(16);
 
 typedef struct heap_header_s {
 	uint64_t size;

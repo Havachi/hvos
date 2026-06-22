@@ -19,7 +19,7 @@
 extern void keyboard_handler_c(void);
 extern char __bss_start, __bss_end;
 
-#define KERNEL_STACK_SIZE 16384
+
 uint8_t kernel_stack[KERNEL_STACK_SIZE] __aligned(16);
 
 void hcf(void) {
@@ -75,6 +75,8 @@ void kernel_initialize(void) {
 	init_gdt_local();
 	tss_set_kernel_stack((uint64_t)kernel_stack + KERNEL_STACK_SIZE);
 	
+	init_smp_data();
+
 	intr_init();
 	init_syscall();
 	init_multitasking();

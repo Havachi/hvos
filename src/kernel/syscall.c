@@ -2,6 +2,7 @@
 #include "asm/asm.h"
 #include "kernel/gdt.h"
 #include "kernel/scheduler/task_state.h"
+#include "kernel/smp.h"
 #include "kernel/sync.h"
 #include "kernel/time.h"
 #include "kernel/tss.h"
@@ -18,18 +19,28 @@
 extern task_t tasks[];
 
 extern char keyboard_get_char(void);
+extern uint64_t kernel_stack_pointer;
+
+void init_syscall_gs() {
+	cpu_data_t *cpu = get_current_cpu_data();
+	uint64_t addr = (uint64_t)cpu;
+	uint32_t low = (uint32_t)(addr & 0xFFFFFFFF);
+	uint32_t high = (uint32_t)(addr >> 32);
+
+	__asm__ volatile("wrmsr" : : "c"(MSR_KERNEL_GS_BASE), "a"(low), "d"(high));
+}
 
 void init_syscall(void) {
     uint64_t efer = rdmsr(MSR_EFER);
     efer |= (1ULL << 0);
     wrmsr(MSR_EFER, efer);
-
-    // Your existing LSTAR, STAR, and SFMASK code continues here...
     wrmsr(MSR_LSTAR, (uint64_t)syscall_entry_asm);
-    uint64_t star_val = ((uint64_t)0x1B << 48) | ((uint64_t)0x08 << 32);
+    uint64_t star_val = (((uint64_t)(__USER_CS - 16) & 0xFFF8) << 48) | (((uint64_t)__KERNEL_CS & 0xFFF8) << 32);
     wrmsr(MSR_STAR, star_val);
-    wrmsr(MSR_SFMASK, 0x200); 
+    wrmsr(MSR_SFMASK, 0xFFFFFFFFFFFFFFFD); 
+	init_syscall_gs();
 }
+
 
 int sys_open(const char *path, int flags) {
 	if (root_dentry == NULL || path == NULL) return -1;
@@ -184,8 +195,9 @@ int sys_fork(void) {
 	return -1;
 }
 
-void syscall_handler(stack_frame_t *frame) {
-	uint64_t syscall_number = frame->rax;
+void syscall_handler(pt_regs_t *frame) {
+	uint64_t syscall_number = frame->orig_ax;
+
 	switch (syscall_number) {
 		case SC_UPRINT:
 			sys_print((const char *)frame->rdi);
@@ -220,6 +232,7 @@ void syscall_handler(stack_frame_t *frame) {
 
 		case SC_WAITID:
 			frame->rax = sys_waitid(frame->rdi, frame->rsi, (void *)frame->rdx, frame->r10, (void *)frame->r8);
+			break;
 		default:
 			printf("Unknown syscall: %d\n", syscall_number);
 			break;

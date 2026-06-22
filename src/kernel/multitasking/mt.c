@@ -35,7 +35,7 @@ void init_bsp_main_process() {
 	bsp_main_thread->next = NULL;
 	sprintf(bsp_main_thread->name, "MAIN_THREAD\0");
 	bsp_main_thread->process = bsp_main_process;
-	bsp_main_thread->kernel_stack_base = NULL;
+	bsp_main_thread->kernel_stack_base = (void *)((uint64_t)kernel_stack + KERNEL_STACK_SIZE);
 	uint64_t idle_stack_top = (uint64_t)kzalloc(4096) + 4096;
 	thread_t *bsp_idle_thread = new_kernel_thread((uint64_t)idle_loop, idle_stack_top);
 
@@ -54,9 +54,6 @@ void init_bsp_main_process() {
 }
 
 void init_multitasking(){
-
-
-
 	uint32_t cpu_count = g_acpi_cpu_count;
 	cpu_task_lists = (cpu_task_list_t **)kmalloc(sizeof(cpu_task_list_t) * cpu_count);
 

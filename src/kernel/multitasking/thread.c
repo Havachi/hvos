@@ -51,7 +51,10 @@ thread_t *new_elf_thread(uint64_t rip, uint64_t ustack, uint64_t kstack) {
 	stack->rflags = 0x202;
 	stack->usermode_rsp = ustack;
 	stack->usermode_ss = ds;
+	stack->rcx = rip;
+	stack->r11 = 0x202;
 	stack->rbx = ds;
+
 	t->k_rsp = (void *)(uint64_t)krsp;
 	t->kernel_stack_base = (void *)kstack;
 	return t;

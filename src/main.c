@@ -57,6 +57,7 @@ void kmain(void) {
 	print_available_ram(ram_bytes);
     printf("CPU with %d core\n", g_acpi_cpu_count);
     printf("%s\n", datetime_to_str(now()));
+    printf("Userspace stack: %p-%p\n", 0x00007FFFFFFFF000, (0x00007FFFFFFFF000) + (8192 * 4096));
     printf("loading shell\n");
 
 	int pid = execute_elf("/init.elf");

@@ -34,7 +34,6 @@ void exception_dump(registers_t regs)
     {
         desc = s_exceptionDesc[regs.int_num];
     }
-
     printf("Exception: %s\n", desc);
     printf("  rax=%016lx\n", regs.rax);
     printf("  rbx=%016lx\n", regs.rbx);

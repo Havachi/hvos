@@ -116,7 +116,6 @@ uint64_t *alloc_page_table() {
 void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, uint64_t flags) {
 		
 		virtual_address_t vaddr = {._raw = virt_addr_raw};
-
 		page_table_entry_t *pml4_entry = &pml4_virt->entries[vaddr.pml4_index]; 
 		if (!pml4_entry->present) {
 			uint64_t *new_table = alloc_page_table();

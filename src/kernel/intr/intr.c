@@ -11,6 +11,7 @@ extern void scheduler_isr_asm();
 extern void keyboard_interrupt(void);
 extern void pagefault_interrupt(void);
 extern void gpf_exc(void);
+extern void generic_exeption_handler(void);
 
 void intr_init() {
 	idt_init();
@@ -18,6 +19,11 @@ void intr_init() {
 	idt_set_handler(INT_KBD, INTERRUPT_GATE, keyboard_interrupt);
 	idt_set_handler(INT_SPURIOUS, INTERRUPT_GATE, spurious_interrupt);
 	idt_set_handler(INT_SCHEDULER, INTERRUPT_GATE, scheduler_isr_asm);
+
+	for (int i = 0; i < INT_GP; i++) {
+		idt_set_handler(i, INTERRUPT_GATE, generic_exeption_handler);
+	}
+
 	idt_set_handler(INT_PAGE_FAULT, INTERRUPT_GATE, pagefault_interrupt);
 	idt_set_handler(INT_GP,INTERRUPT_GATE , gpf_exc);
 

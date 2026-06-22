@@ -202,7 +202,7 @@ installbios:
 	@./limine-binary/limine bios-install $(ISOOUT)
 
 rundbg: $(ISOOUT) installbios
-	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -d int
+	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -d int -no-reboot -no-shutdown
 
 run: $(ISOOUT) installbios
 	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 2G -cdrom $(ISOOUT) -monitor stdio -smp 4

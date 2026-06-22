@@ -12,6 +12,8 @@
 #define MSR_LSTAR		0xC0000082
 #define MSR_SFMASK		0xC0000084
 #define MSR_EFER        0xC0000080
+#define MSR_GS_BASE		0xC0000101
+#define MSR_KERNEL_GS_BASE	0xC0000102
 
 
 #define __MAP0(m,...)
@@ -77,6 +79,6 @@ extern void syscall_entry_asm(void);
 
 void init_syscall(void);
 void sys_print(const char* str);
-void syscall_handler(stack_frame_t* frame);
+void syscall_handler(pt_regs_t *frame);
 
 #endif

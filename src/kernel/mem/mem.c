@@ -28,7 +28,6 @@ heap_header_t *heap_start = NULL;
 uint64_t heap_current_limit = 0xffffa00000000000;
 
 pml4_table_t *kernel_pml4;
-pml4_table_ptr_t *kernel_pml4_ptr;
 
 
 static uint64_t get_cr3() {
@@ -214,8 +213,6 @@ void new_init_mem(struct limine_memmap_response *memmap) {
 	
 	uint64_t old_cr3 = get_cr3() & ~(uint64_t)0xFFF;
 	pml4_table_t *old_pml4 = (pml4_table_t *)PHYS_TO_VIRT(old_cr3);
-
-	kernel_pml4_ptr = init_kernel_paging();
 
 	map_ram(memmap);
 	uint64_t kernel_paddr = kernel_address_request.response->physical_base;

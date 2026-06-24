@@ -17,7 +17,6 @@
 
 
 extern task_t tasks[];
-
 extern char keyboard_get_char(void);
 extern uint64_t kernel_stack_pointer;
 
@@ -27,6 +26,7 @@ void init_syscall_gs() {
 	uint32_t low = (uint32_t)(addr & 0xFFFFFFFF);
 	uint32_t high = (uint32_t)(addr >> 32);
 
+	__asm__ volatile("wrmsr" : : "c"(MSR_GS_BASE), "a"(low), "d"(high));
 	__asm__ volatile("wrmsr" : : "c"(MSR_KERNEL_GS_BASE), "a"(low), "d"(high));
 }
 
@@ -41,6 +41,10 @@ void init_syscall(void) {
 	init_syscall_gs();
 }
 
+static int validate_user_string(const char *str) {
+	if ((uint64_t)str >= (USR_STACK_BASE | 0xFFF)) return 0;
+	return 1;
+}
 
 int sys_open(const char *path, int flags) {
 	if (root_dentry == NULL || path == NULL) return -1;
@@ -85,8 +89,6 @@ long sys_read(unsigned int fd, char *buffer, size_t size) {
 	return (long)vfs_read(get_current_process()->file_table[fd], (char *)buffer,  size);
 }
 
-
-
 long sys_write(unsigned int fd, const char *buffer, size_t size) {
 	/*if (!is_valid_user_address(buffer, size)) {
 		return -EFAULT;
@@ -123,13 +125,17 @@ void sys_exit(int code) {
 		if (parent->primary)
 			parent->primary->state = STATE_READY;
 	}
-	schedule();
+	kernel_yield();
 	while(1);
 }
 
 int sys_exec(const char *path) {
-	if (path == NULL) return -1;
-	return execute_elf(path);
+	if (path == NULL) return -EINVAL;
+	uint64_t rflags;
+	__asm__ __volatile__("pushfq; pop %0; cli" : "=r"(rflags) :: "memory");
+	int result = execute_elf(path);
+	__asm__ __volatile__("push %0; popfq" :: "r"(rflags) : "memory");
+	return result;
 }
 
 int sys_time(uint64_t *ptr) {
@@ -154,7 +160,9 @@ int sys_waitpid(uint64_t pid) {
 	current_proc->is_waiting = true;
 	current_proc->wait_target_pid = pid;
 	current_thread->state = STATE_WAITING;
-	schedule();
+	printf("T%d goes to sleep while T%d is running\n", current_thread->tid, child->primary->tid);
+	kernel_yield();
+
 	return child->exit_code;
 }
 

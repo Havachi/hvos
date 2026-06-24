@@ -68,15 +68,17 @@
 
 
 
-
+asmlinkage int sys_open(const char *path, int flags);
 asmlinkage long sys_read(unsigned int fd, char *buf, size_t count);
 asmlinkage long sys_write(unsigned int fd, const char *buf, size_t count);
-
+asmlinkage void sys_exit(int code);
+asmlinkage int sys_exec(const char *path);
+asmlinkage int sys_time(uint64_t *ptr);
+asmlinkage int sys_waitpid(uint64_t pid);
 
 extern void wrmsr(uint32_t, uint64_t);
 extern uint64_t rdmsr(uint32_t msr);
 extern void syscall_entry_asm(void);
-
 void init_syscall(void);
 void sys_print(const char* str);
 void syscall_handler(pt_regs_t *frame);

@@ -82,13 +82,8 @@ void kernel_initialize(void) {
 	init_multitasking();
 	printf("multitasking enabled\n");
 	kbd_init();
-	
-	sti();
 	init_rtc();
-	
 	//smp_init();
-
 	//asm volatile("cli; hlt");
-
 	printf("KERNEL INIT DONE!\n");
 }

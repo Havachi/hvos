@@ -94,8 +94,7 @@ typedef struct {
 } cpu_task_list_t;
 
 
-uint64_t scheduler_c(uint64_t old_rsp);
-void schedule(void);
+uint64_t schedule(uint64_t old_rsp, uint64_t from);
 void init_multitasking();
 
 task_t *create_user_task(void (*entry_point)(void), pt_entry *process_pml4, char *name);
@@ -104,6 +103,7 @@ void create_test_task();
 task_t *new_user_task(uint64_t rip, uint64_t user_stack, uint64_t kernel_stack);
 void push_new_task(task_t *task);
 process_t *get_current_process();
+thread_t *get_current_thread();
 cpu_task_list_t *get_cpu_task_list();
 static inline void yield(void) {
     __asm__ volatile("int %0"::"i"(INT_SCHEDULER));
@@ -113,7 +113,7 @@ static inline void yield(void) {
 #define SCH_ALG_RR  0x01
 #define SCH_ALG_CFS 0x02
 
-#define SCH_ALG SCH_ALG_RR
+#define SCH_ALG SCH_ALG_CFS
 
 thread_t *get_next_thread();
 thread_t *get_next_thread_rr();
@@ -121,5 +121,6 @@ thread_t *get_next_thread_cfs();
 thread_t *find_idle_thread(list_t *thread_list);
 
 void notify_wait_channel(void *channel);
+extern void kernel_yield(void);
 
 #endif

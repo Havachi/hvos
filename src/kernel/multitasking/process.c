@@ -41,7 +41,6 @@ process_t *new_process() {
 }
 
 
-
 process_t *new_elf_process(uint64_t rip, uint64_t ustack, uint64_t kstack) {
 	process_t *p = new_process();
 	if (!p) return NULL;
@@ -58,7 +57,7 @@ process_t *new_elf_process(uint64_t rip, uint64_t ustack, uint64_t kstack) {
 	t->process = p;
 	p->primary = t;
 	
-	push_new_thread(p, t);
+	push_new_thread(t);
 	push_new_process(p);
 	return p;
 }

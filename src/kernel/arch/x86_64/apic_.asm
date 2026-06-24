@@ -17,7 +17,7 @@ wrmsr:
     wrmsr
     ret
 
-extern scheduler_c
+extern schedule
 global timer_handler_asm
 
 timer_handler_asm:
@@ -42,7 +42,8 @@ timer_handler_asm:
     push r15
 
 	mov rdi, rsp
-	call scheduler_c
+    mov rsi, 99
+	call schedule
 	mov rsp, rax
     
     pop r15

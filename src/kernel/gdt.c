@@ -20,9 +20,7 @@ tss_entry_t *get_local_tss() {
 static void set_gdt_tss_gate (gdt_desc_t* entry, uint64_t base, uint64_t limit) {
 
 	gdt_desc_t *tss_1 = entry;
-	gdt_desc_t *tss_2 = entry + 1;
 	memset(tss_1, 0, sizeof(gdt_desc_t));
-	memset(tss_2, 0, sizeof(gdt_desc_t));
 
 	tss_1->limit0 = limit & 0xFFFF;
 	tss_1->base0 = base & 0xFFFF;
@@ -37,11 +35,9 @@ static void set_gdt_tss_gate (gdt_desc_t* entry, uint64_t base, uint64_t limit) 
 	tss_1->d = 0;
 	tss_1->g = 0;
 	tss_1->base2 = (base >> 24) & 0xFF;
-
-	uint32_t base_upper = (base >> 32) & 0xFFFFFFFF;
-	tss_2->limit0 = base_upper & 0xFFFF;
-	tss_2->base0 = (base_upper >> 16) & 0xFFFF;
-
+	uint32_t *tss_2_raw = (uint32_t*)(entry + 1);
+	tss_2_raw[0] = (uint32_t)(base >> 32);
+	tss_2_raw[1] = 0;
 }
 
 void set_gdt_gate(gdt_desc_t *entry, uint32_t base, uint32_t limit, uint32_t flags) {

@@ -51,9 +51,6 @@ thread_t *new_elf_thread(uint64_t rip, uint64_t ustack, uint64_t kstack) {
 	stack->rflags = 0x202;
 	stack->usermode_rsp = ustack;
 	stack->usermode_ss = ds;
-	stack->rcx = rip;
-	stack->r11 = 0x202;
-	stack->rbx = ds;
 
 	t->k_rsp = (void *)(uint64_t)krsp;
 	t->kernel_stack_base = (void *)kstack;
@@ -64,19 +61,16 @@ thread_t *new_kernel_thread(uint64_t rip, uint64_t kstack) {
 	thread_t *t = new_thread();
 	if (!t) return NULL;
 
-	uint64_t cs = __KERNEL_CS;
-	uint64_t ds = __KERNEL_DS;
-
 	uint8_t *krsp = (uint8_t *) kstack;
 	krsp -= sizeof(new_task_kernel_stack_t);
 	new_task_kernel_stack_t *stack = (new_task_kernel_stack_t *)krsp;
 	memset(stack, 0, sizeof(new_task_kernel_stack_t));
-	stack->rbx = ds;
+
 	stack->rip = rip;
-	stack->cs = cs;
+	stack->cs = __KERNEL_CS;
 	stack->rflags = 0x202;
 	stack->usermode_rsp = (uint64_t)kstack;
-	stack->usermode_ss = ds;
+	stack->usermode_ss = __KERNEL_DS;
 
 	t->k_rsp = (void *)(uint64_t) krsp;
 	t->kernel_stack_base = (void *)kstack;
@@ -87,7 +81,7 @@ thread_t *new_kernel_thread(uint64_t rip, uint64_t kstack) {
 
 
 //Push the new thread in all the thread list
-void push_new_thread(process_t *p, thread_t *s) {
+void push_new_thread(thread_t *s) {
 	cpu_task_list_t *cpu = get_cpu_task_list();
 	list_push(cpu->thread_list, (void*) s);
 }

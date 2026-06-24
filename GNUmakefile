@@ -141,7 +141,8 @@ USER_CFLAGS := -Wall -Wextra -std=gnu11 -ffreestanding \
 	  --sysroot=$(SYSROOT_DIR) -isystem$(SYSROOT_DIR)/usr/include 
 HVLIBC_DIR := hvlibc
 
-INSTALLED_HVLIBC:= $(SYSROOT_DIR)/usr/lib/libc.a
+INSTALLED_LIBK:= $(SYSROOT_DIR)/usr/lib/libk.a
+INSTALLED_LIBC:= $(SYSROOT_DIR)/usr/lib/libc.a
 
 # Default target. This must come first, before header dependencies.
 .PHONY: all
@@ -151,7 +152,7 @@ all: bin/$(OUTPUT) $(USERLANDPROG)
 -include $(HEADER_DEPS)
 
 # Link rules for the final executable.
-bin/$(OUTPUT): GNUmakefile linker.lds $(INSTALLED_HVLIBC) $(OBJ)
+bin/$(OUTPUT): GNUmakefile linker.lds $(INSTALLED_LIBK) $(OBJ)
 	@mkdir -p "$(dir $@)"
 	@echo "[LD] $(notdir $@)"
 	@$(LD) $(LDFLAGS) $(OBJ) -lk -o $@
@@ -223,13 +224,15 @@ kernel: bin/$(OUTPUT)
 userspace:
 	@make -C $(USERLANDDIR)
 
-$(USERLANDPROG): userspace
+$(USERLANDPROG): userspace $(INSTALLED_LIBC)
 	@cp $(USERLANDDIR)/build/*.elf ./bin
 
 
-$(INSTALLED_HVLIBC): mkfullsysroot
-	@SYSROOT_DIR=../$(SYSROOT_DIR) make --no-print-directory -C hvlibc
-	@SYSROOT_DIR=../$(SYSROOT_DIR) make --no-print-directory -C hvlibc install
+$(INSTALLED_LIBC): mkfullsysroot
+	@SYSROOT_DIR=../$(SYSROOT_DIR) make --no-print-directory -C hvlibc install_libc
+
+$(INSTALLED_LIBK): mkfullsysroot
+	@SYSROOT_DIR=../$(SYSROOT_DIR) make --no-print-directory -C hvlibc install_libk
 
 fclean_lib:
 	@make --no-print-directory -C hvlibc fclean
@@ -255,7 +258,8 @@ mkfullsysroot: $(SYSROOT_DIR)
 
 install_headers: install_hvlibc_header install_hvos_header
 
-install_hvlibc: $(INSTALLED_HVLIBC)
+install_hvlibc: $(INSTALLED_LIBC)
+
 
 
 install_hvlibc_header:

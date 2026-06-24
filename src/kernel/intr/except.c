@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+extern kernel_memmap_t *kmemmap;
 static const char *s_exceptionDesc[20] =
 {
     [0] = "Divide Error",

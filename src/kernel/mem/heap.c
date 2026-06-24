@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#define HEAP_INIT_PAGES 8192
+#define HEAP_INIT_PAGES 1024
 
 extern heap_header_t *heap_free_list;
 

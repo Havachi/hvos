@@ -32,6 +32,21 @@ typedef struct heap_header_s {
 } heap_header_t;
 
 
+typedef struct kernel_memmap_s {
+	uint64_t kernel_start;
+	uint64_t kernel_size;
+	uint64_t kheap_start;
+	uint64_t kheap_size;
+	uint64_t uheap_start;
+	uint64_t uheap_size;
+	uint64_t kstack_start;
+	uint64_t kstack_size;
+	uint64_t ustack_start;
+	uint64_t ustack_size;
+	uint64_t mem_start;
+	uint64_t mem_size;	
+} kernel_memmap_t;
+
 typedef uint64_t pt_entry;
 
 extern uint64_t			hhdm_offset;
@@ -72,4 +87,7 @@ pml4_table_t *create_new_pml4(void);
 
 
 bool is_valid_user_address(const void *addr, size_t size);
+
+kernel_memmap_t *init_kmemmap();
+void print_kmemmap(kernel_memmap_t *km);
 #endif

@@ -2,6 +2,7 @@
 #include "kernel/acpi.h"
 #include "kernel/local_apic.h"
 #include "kernel/scheduler/task_state.h"
+#include "kernel/smp.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -51,6 +52,9 @@ void init_bsp_main_process() {
 
 	bsp_main_process->primary = bsp_main_thread;
 	bsp_task_list->current_thread = bsp_main_thread;
+	cpu_data_t * cpu_data = get_current_cpu_data();
+	cpu_data->stack_top = (uint64_t)bsp_main_thread->kernel_stack_base;
+	bsp_main_process->thread_count = 2;
 }
 
 void init_multitasking(){
@@ -84,4 +88,9 @@ process_t *get_current_process() {
 	}
 	*/
 	return task_list->current_thread->process;
+}
+
+thread_t *get_current_thread() {
+	cpu_task_list_t *task_list = get_cpu_task_list();
+	return task_list->current_thread;
 }

@@ -42,12 +42,10 @@ syscall_entry_asm:
 	push rbx
 	push rax
 
-	sti
 	mov rbp, rsp
 
 	mov rdi, rbp
 	call syscall_handler
-	cli
 	mov rsp, rbp
 
 	pop rax
@@ -70,8 +68,8 @@ syscall_entry_asm:
 	pop rcx
 	add rsp, 8
 	pop r11
-
-	mov rsp, [gs:CPU_SCRATCH_SP2]
+	pop rsp
+	sti
 	swapgs
 	o64 sysret
 

@@ -42,6 +42,8 @@ static void idt_set_entry_with_ist(uint8_t index, uint64_t base, uint16_t select
 
 	entry->offset_1 = (uint16_t)base;
 	entry->selector = selector;
+	entry->ist = ist & 0x7;
+	
 	entry->type_attributes = type;
 	entry->offset_2 = (uint16_t)(base >> 16);
 	entry->offset_3 = (uint32_t)(base >> 32);

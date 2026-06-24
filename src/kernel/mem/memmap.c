@@ -4,6 +4,8 @@
 
 
 
+
+
 uint64_t memmap_get_total_pages(struct limine_memmap_response *memmap) {
 	uint64_t total_pages = 0;
 	for (uint64_t i = 0; i < memmap->entry_count; i++) {

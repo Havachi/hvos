@@ -174,6 +174,7 @@ void print_error(char *str) {
 }
 
 void clear_screen() {
+	__asm__ __volatile("cli");
     uint8_t *fb_bytes = (uint8_t *)fb->address;
     uint32_t pixels_per_pitch_row = fb->pitch / 4;
     
@@ -186,6 +187,7 @@ void clear_screen() {
     }
 	col = 0;
 	line = 0;
+	__asm__ __volatile("sti");
 }
 
 void init_fb() {

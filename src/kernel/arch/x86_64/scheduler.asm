@@ -1,10 +1,17 @@
 extern schedule
 global scheduler_isr_asm
 global switch_to
+global kernel_yield
+extern pit_interrupt_exit
 
 section .text
 
 scheduler_isr_asm:
+	cli
+	test qword [rsp + 8], 3
+	jz .from_kernel
+	swapgs
+.from_kernel:
 	push r15
 	push r14
 	push r13
@@ -21,8 +28,14 @@ scheduler_isr_asm:
 	push rbx
 	push rax
 
+	mov rdi, rsp
+	mov rsi, 0
 	call schedule
-
+	mov rsp, rax
+	test qword [rsp + 8], 3
+	jz .to_kernel
+	swapgs
+.to_kernel:
     pop rax
     pop rbx
     pop rcx
@@ -38,7 +51,7 @@ scheduler_isr_asm:
     pop r13
     pop r14
     pop r15
-
+	sti
 	iretq
 
 switch_to:
@@ -49,4 +62,42 @@ switch_to:
 	mov rsp, [rsi]
 
 .no_switch:
+	ret
+
+
+
+kernel_yield:
+	mov rax, ss
+	push rax
+	push rsp
+	add qword [rsp], 8
+	pushfq
+	mov rax, cs
+	push rax
+
+	mov rax, [rsp + 32]
+	push rax
+
+	push r15
+	push r14
+	push r13
+	push r12
+	push r11
+	push r10
+	push r9
+	push r8
+	push rbp
+	push rdi
+	push rsi
+	push rdx
+	push rcx
+	push rbx
+	push rax
+
+	mov rdi, rsp
+	call schedule
+	mov rsp, rax
+
+	jmp pit_interrupt_exit
+
 	ret

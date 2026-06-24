@@ -27,7 +27,7 @@ thread_t *new_thread();
 thread_t *new_elf_thread(uint64_t rip, uint64_t ustack, uint64_t kstack);
 thread_t *new_kernel_thread(uint64_t rip, uint64_t kstack);
 void free_thread(thread_t *t);
-void push_new_thread(process_t *p, thread_t *s);
+void push_new_thread(thread_t *s);
 thread_t *thread_by_tid (uint64_t tid);
 
 bool isdead(thread_t *t);

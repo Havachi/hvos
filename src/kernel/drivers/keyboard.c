@@ -59,7 +59,7 @@ void keyboard_handler_c(void) {
 
 		if (scancode == BACKSPACE) {
 			append_to_input_buffer('\b');
-			return;
+			kernel_yield();
 		}
 		char c;
 
@@ -67,13 +67,13 @@ void keyboard_handler_c(void) {
 			c = normal_scan_code_table[scancode];
 			if (c == 'c') {
 				append_to_input_buffer(CANCEL);
+				kernel_yield();
 
-				return;
 
 			}
 			if (c == 'l') {
 				append_to_input_buffer(CLEAR);
-				return;
+				kernel_yield();
 			}
 		}
 

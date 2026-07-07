@@ -1,4 +1,3 @@
-#include "hvos.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -12,6 +11,5 @@ int main(void) {
     }
     waitpid(pid);
     printf("[INIT]: Shell has exited\n");
-    while (1);
     return 0;
 }

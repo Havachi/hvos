@@ -1,7 +1,10 @@
 #include "drivers/keyboard.h"
+#include "drivers/console.h"
 #include "drivers/scancode.h"
 #include <stdio.h>
 #include "cpu/io.h"
+
+extern void kernel_yield();
 
 uint32_t kdb_queue_occupancy = 0;
 static char kdb_queue[KDB_BUFFER_SIZE];
@@ -18,13 +21,18 @@ static uint8_t read_scancode() {
 	return io_read_8(KEYBOARD_DATA_PORT);
 }
 
+extern void notify_wait_channel(void *channel);
 void append_to_input_buffer(char c) {
 	if(kdb_queue_occupancy < KDB_BUFFER_SIZE){
 		kdb_queue[kdb_head] = c;	
 		kdb_head = (kdb_head + 1) % KDB_BUFFER_SIZE;
 		kdb_queue_occupancy++;
 	}
+	notify_wait_channel(console_read);
 }
+
+
+
 
 void keyboard_handler_c(void) {
 		uint8_t scancode = read_scancode();
@@ -59,6 +67,7 @@ void keyboard_handler_c(void) {
 			c = normal_scan_code_table[scancode];
 			if (c == 'c') {
 				append_to_input_buffer(CANCEL);
+
 				return;
 
 			}
@@ -73,8 +82,8 @@ void keyboard_handler_c(void) {
 		} else {
 			c = normal_scan_code_table[scancode];
 		}
-
 		append_to_input_buffer(c);
+		kernel_yield();
 }
 
 char keyboard_get_char(void) {

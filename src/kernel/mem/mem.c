@@ -28,7 +28,10 @@ heap_header_t *heap_start = NULL;
 uint64_t heap_current_limit = 0xffffa00000000000;
 
 pml4_table_t *kernel_pml4;
+<<<<<<< HEAD
 
+=======
+>>>>>>> Multitasking_rework
 
 static uint64_t get_cr3() {
     uint64_t cr3;
@@ -121,15 +124,15 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 		page_table_entry_t *pml4_entry = &pml4_virt->entries[vaddr.pml4_index]; 
 		if (!pml4_entry->present) {
 			uint64_t *new_table = alloc_page_table();
+			
 			if (new_table == NULL) {
 				printf("KERNEL PANIC: Out of physical memory\n");
 				for(;;) __asm__ __volatile("hlt");
 			}
 			pml4_entry->present = 1;
 			pml4_entry->rw = 1;
-			pml4_entry->us = 0;
+			pml4_entry->us = (flags & PTE_USER) ? 1 : 0;
 			pml4_entry->address = (uint64_t)new_table >> 12;
-			pml4_entry->_raw = pml4_entry->_raw | flags;
 		}
 		pdpt_table_t *pdpt = (pdpt_table_t *)(uint64_t)PHYS_TO_VIRT(pml4_entry->address << 12);
 		page_table_entry_t *pdpt_entry = &pdpt->entries[vaddr.pdpt_index];
@@ -142,9 +145,8 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 			}
 			pdpt_entry->present = 1;
 			pdpt_entry->rw = 1;
-			pdpt_entry->us = 0;
+			pdpt_entry->us = (flags & PTE_USER) ? 1 : 0;
 			pdpt_entry->address = (uint64_t)new_table >> 12;
-			pdpt_entry->_raw = pdpt_entry->_raw | flags;
 		}
 		pd_table_t *pd = (pd_table_t *)(uint64_t) PHYS_TO_VIRT(pdpt_entry->address << 12);
 		page_table_entry_t *pd_entry = &pd->entries[vaddr.pd_index];
@@ -157,9 +159,8 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 			}
 			pd_entry->present = 1;
 			pd_entry->rw = 1;
-			pd_entry->us = 0;
+			pd_entry->us = (flags & PTE_USER) ? 1 : 0;
 			pd_entry->address = (uint64_t)new_table >> 12;
-			pd_entry->_raw = pd_entry->_raw | flags;
 		}
 
 		pt_table_t *pt = (pt_table_t *)(uint64_t) PHYS_TO_VIRT(pd_entry->address << 12);
@@ -167,9 +168,8 @@ void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, u
 		
 		pt_entry->present = 1;
 		pt_entry->rw = 1;
-		pt_entry->us = 0;
+		pt_entry->us = (flags & PTE_USER) ? 1 : 0;
 		pt_entry->address = paddr >> 12;
-		pt_entry->_raw = pt_entry->_raw | flags;
 
 }
 ///Map the whole usable ram
@@ -193,16 +193,20 @@ static void map_kernel(uint64_t kpaddr, virtual_address_t *kvaddr, size_t ksize)
 }
 
 pml4_table_t *create_new_pml4(void) {
-
     uint64_t pml4_phys = (uint64_t)pmm_alloc();
-    pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(pml4_phys);
+	if (!pml4_phys) return NULL;
 
+	pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(pml4_phys);
     memset(pml4_virt, 0, PAGE_SIZE);
-	memcpy(pml4_virt, kernel_pml4, PAGE_SIZE);
+
+	for (int i = 256; i < 512; i++) {
+		pml4_virt->entries[i] = kernel_pml4->entries[i];
+	}
     return pml4_virt;
 }
 
 
+<<<<<<< HEAD
 void new_init_mem(struct limine_memmap_response *memmap) {
 	hhdm_offset = hhdm_request.response->offset;
 	top_ram = get_highest_phys_addr(memmap);
@@ -220,6 +224,8 @@ void new_init_mem(struct limine_memmap_response *memmap) {
 	map_kernel(kernel_paddr, kernel_vaddr, kernel_size);
 }
 
+=======
+>>>>>>> Multitasking_rework
 void init_mem(struct limine_memmap_response *memmap) {
 	//Globally set hhdm offset for further uses
 	hhdm_offset = hhdm_request.response->offset;
@@ -236,7 +242,7 @@ void init_mem(struct limine_memmap_response *memmap) {
 	
 
 	memcpy(kernel_pml4, old_pml4, PAGE_SIZE);
-
+	
 	map_ram(memmap);
 
 	uint64_t kernel_paddr = kernel_address_request.response->physical_base;
@@ -268,4 +274,27 @@ bool is_valid_user_address(const void *addr, size_t size) {
 	}
 
 	return true;
+}
+
+kernel_memmap_t *init_kmemmap() {
+	kernel_memmap_t *memmap = kzalloc(sizeof(kernel_memmap_t));
+
+	memmap->kernel_start = (uint64_t)&kernel_start;
+	memmap->kernel_size = kernel_size;
+
+	memmap->kstack_start = (uint64_t)&kernel_stack;
+	memmap->kstack_size = (uint64_t)KERNEL_STACK_SIZE;
+
+	memmap->kheap_start = (uint64_t)&heap_start;
+	memmap->kheap_size = (uint64_t)(heap_current_limit - ((uint64_t)&heap_start));
+
+	return memmap;
+}
+
+void print_kmemmap(kernel_memmap_t *km) {
+    printf("\nKERNEL MEMMAP\n");
+	printf("kernel:\t\t%016p\t%016p\n", km->kernel_start, km->kernel_start + km->kernel_size);
+	printf("stack:\t\t%016p\t%016p\n", km->kstack_start, km->kstack_start - km->kstack_size);
+	printf("heap:\t\t%016p\t%016p\n", km->kheap_start, km->kheap_start + km->kheap_size);
+	printf("user stack:\t%016p\t%016p\n", km->ustack_start, km->ustack_start - km->ustack_size);
 }

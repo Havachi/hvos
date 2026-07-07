@@ -1,7 +1,11 @@
+#include <stdint.h>
 #include <stdio.h>
 #include "kernel/smp.h"
+#include "mem/mem.h"
 
 volatile uint8_t g_active_cpu_count;
+
+cpu_data_t **cpu_data_list;
 
 
 void ap_entry(struct limine_smp_info *smp_info) {
@@ -11,6 +15,23 @@ void ap_entry(struct limine_smp_info *smp_info) {
 	__asm__ __volatile("sti");
 	for (;;) {
 		__asm__ __volatile("hlt");
+	}
+}
+
+cpu_data_t *get_current_cpu_data() {
+	return cpu_data_list[local_apic_get_id()];
+}
+
+void init_smp_data() {
+	struct limine_smp_response *smp_response = smp_request.response;
+	uint64_t nb_cpu = smp_response->cpu_count;
+
+	cpu_data_list = (cpu_data_t **)kzalloc(sizeof(cpu_data_t) * nb_cpu);
+
+	for(uint64_t i = 0; i < nb_cpu; i++) {
+		cpu_data_list[i] = kzalloc(sizeof(cpu_data_t));
+		cpu_data_list[i]->stack_top = 0;
+		cpu_data_list[i]->tss_sp2 = 0;
 	}
 }
 

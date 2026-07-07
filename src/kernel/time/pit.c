@@ -5,9 +5,14 @@
 volatile uint64_t g_pit_ticks;
 extern uint8_t *g_local_apic_address;
 
-void pit_init(){
+#define DEBUGGING 1
 
+void pit_init(){
+#ifdef DEBUGGING
+	uint32_t hz = 50;
+#else
 	uint32_t hz = 1000;
+#endif
 	uint32_t divisor = PIT_FREQUENCY / hz;
 	io_write_8(PIT_CMD, CMD_BINARY | CMD_MODE3 | CMD_RW_BOTH | CMD_COUNTER0);
 	io_write_8(PIT_COUNTER0, divisor);

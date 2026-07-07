@@ -86,7 +86,6 @@ int main(void) {
 		exec_cmd(input_buffer);
 		clear_buffer();
 	}
-
 	//exit(7);
 	return 0;
 }

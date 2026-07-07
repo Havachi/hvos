@@ -43,5 +43,5 @@ typedef struct {
 }elf64_t;
 
 int elf_load_and_run(const char* path);
-
+int execute_elf(const char *path);
 #endif

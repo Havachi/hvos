@@ -5,23 +5,30 @@ extern syscall_kernel_stack
 extern current_task_syscall_stack
 global syscall_entry_asm
 
+%define CPU_SCRATCH_SP2 0
+%define CPU_STACK_TOP 8
 
 syscall_entry_asm:
+	cli
 	swapgs
-	mov r10, rsp
+	mov [gs:CPU_SCRATCH_SP2], rsp
+	mov rsp, [gs:CPU_STACK_TOP]
 
-	mov rsp, [rel syscall_kernel_stack];
-
+	; User SS
 	push 0x1B
-	push r10
-	push 0x202
+	; User RSP 
+	push qword [gs:CPU_SCRATCH_SP2]
+	; User RFLAGS
+	push r11
+	; User CS
 	push 0x23
+	; User RIP
 	push rcx
+	push rax
 
 	push r15
 	push r14
 	push r13
-	push r14
 	push r12
 	push r11
 	push r10
@@ -35,16 +42,12 @@ syscall_entry_asm:
 	push rbx
 	push rax
 
-	sti
-
 	mov rbp, rsp
-	and rsp, ~0xF
 
 	mov rdi, rbp
 	call syscall_handler
 	mov rsp, rbp
-	cli
-	
+
 	pop rax
 	pop rbx
 	pop rcx
@@ -57,18 +60,16 @@ syscall_entry_asm:
 	pop r10
 	pop r11
 	pop r12
-	add rsp, 8
 	pop r13
 	pop r14
 	pop r15
+	add rsp, 8
 
-    add rsp, 8
-    add rsp, 8
-    add rsp, 8
-    pop r10
-    add rsp, 8
-    mov r11, 0x202
-    mov rsp, r10
-
+	pop rcx
+	add rsp, 8
+	pop r11
+	pop rsp
+	sti
 	swapgs
 	o64 sysret
+

@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+extern kernel_memmap_t *kmemmap;
 static const char *s_exceptionDesc[20] =
 {
     [0] = "Divide Error",
@@ -34,7 +34,6 @@ void exception_dump(registers_t regs)
     {
         desc = s_exceptionDesc[regs.int_num];
     }
-
     printf("Exception: %s\n", desc);
     printf("  rax=%016lx\n", regs.rax);
     printf("  rbx=%016lx\n", regs.rbx);
@@ -51,7 +50,7 @@ void exception_dump(registers_t regs)
 }
 
 void unhandled_page_fault(fault_frame_t *f, uint64_t cr2) {
-   printf("\n=== PAGE FAULT ===\n");
+    printf("\n=== PAGE FAULT ===\n");
     printf("Faulting address (CR2):\t0x%lx\n", cr2);
     printf("Error code:            \t0x%lx\n", f->error_code);
 
@@ -84,7 +83,6 @@ void unhandled_page_fault(fault_frame_t *f, uint64_t cr2) {
 }
 
 void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
-    /*
     bool is_user = (f->error_code & PF_USER) != 0;
     bool is_present = (f->error_code & PF_PRESENT) != 0;
     uint64_t stack_limit = USR_STACK_BASE - (16 * PAGE_SIZE);
@@ -92,13 +90,14 @@ void page_fault_handler_c(fault_frame_t *f, uint64_t cr2) {
         uint64_t fault_page_virt = cr2 & ~(PAGE_SIZE - 1);
         uint64_t new_page_phys = (uint64_t)pmm_alloc();
         if (new_page_phys != 0) {
-            task_t *current_task = get_current_task();
-            pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(current_task->cr3);
+            cpu_task_list_t *cpu = get_cpu_task_list();
+            process_t *current_process = cpu->current_thread->process; 
+            pml4_table_t *pml4_virt = (pml4_table_t *)PHYS_TO_VIRT(current_process->cr3);
             map_page(pml4_virt, fault_page_virt, new_page_phys, 
                     PTE_PRESENT | PTE_WRITABLE | PTE_USER);
             return;
         }
-    }*/
+    }
     unhandled_page_fault(f,cr2);
 }
 

@@ -1,7 +1,17 @@
-extern scheduler_c
-
+extern schedule
 global scheduler_isr_asm
+global switch_to
+global kernel_yield
+extern pit_interrupt_exit
+
+section .text
+
 scheduler_isr_asm:
+	cli
+	test qword [rsp + 8], 3
+	jz .from_kernel
+	swapgs
+.from_kernel:
 	push r15
 	push r14
 	push r13
@@ -19,14 +29,13 @@ scheduler_isr_asm:
 	push rax
 
 	mov rdi, rsp
-	call scheduler_c
+	mov rsi, 0
+	call schedule
 	mov rsp, rax
-	mov ax, 0x1B
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-
+	test qword [rsp + 8], 3
+	jz .to_kernel
+	swapgs
+.to_kernel:
     pop rax
     pop rbx
     pop rcx
@@ -42,41 +51,53 @@ scheduler_isr_asm:
     pop r13
     pop r14
     pop r15
-
+	sti
 	iretq
 
-
-global context_switch
-context_switch:
-	push rbx
-	push rsi
-	push rdi
-	push rbp
+switch_to:
+	cmp rsi, 0
+	je .no_switch
 
 	mov [rdi], rsp
-	mov rsp, rsi
+	mov rsp, [rsi]
 
-	pop rbp
-	pop rdi
-	pop rsi
-	pop rbx
-
+.no_switch:
 	ret
 
-global new_task_setup
-new_task_setup:
-	pop rbx
-	mov ds, bx
-	mov es, bx
-	mov fs, bx
-	mov gs, bx
 
-	xor rax, rax
-	xor rbx, rbx
-	xor rcx, rcx
-	xor rdx, rdx
-	xor rsi, rsi
-	xor rdi, rdi
-	xor rbp, rbp
 
-	iretq
+kernel_yield:
+	mov rax, ss
+	push rax
+	push rsp
+	add qword [rsp], 8
+	pushfq
+	mov rax, cs
+	push rax
+
+	mov rax, [rsp + 32]
+	push rax
+
+	push r15
+	push r14
+	push r13
+	push r12
+	push r11
+	push r10
+	push r9
+	push r8
+	push rbp
+	push rdi
+	push rsi
+	push rdx
+	push rcx
+	push rbx
+	push rax
+
+	mov rdi, rsp
+	call schedule
+	mov rsp, rax
+
+	jmp pit_interrupt_exit
+
+	ret

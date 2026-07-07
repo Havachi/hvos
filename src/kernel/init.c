@@ -13,13 +13,15 @@
 #include "kernel/syscall.h"
 #include "kernel/vfs.h"
 #include "kernel/video.h"
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 
 extern void keyboard_handler_c(void);
 extern char __bss_start, __bss_end;
 
-#define KERNEL_STACK_SIZE 16384
+
 uint8_t kernel_stack[KERNEL_STACK_SIZE] __aligned(16);
 
 void hcf(void) {
@@ -61,6 +63,28 @@ void kbd_init(void) {
     }
 }
 
+void analyse_page_table(page_table_t *page_tbl, uint32_t level, uint32_t ident) {
+	if (level == 2) {
+		return;
+	}
+	for(uint64_t i = 0; i < 512; i++) {
+		if (page_tbl->entries[i].present == 1) {
+			for (uint32_t p = 0; p < ident; p++){
+				printf(" ");
+			}
+			printf("[%d] set\n",i);
+			analyse_page_table((page_table_t *)PHYS_TO_VIRT(page_tbl->entries[i].address  << 12), level-1, ident + 1);
+		}
+	}
+}
+
+static void analyse_mem() {
+	printf("PML4:\n");
+	analyse_page_table(kernel_pml4, 4, 0);
+}
+
+
+
 void kernel_initialize(void) {
 	//memset(&__bss_start, 0, &__bss_end - &__bss_start);
 	enable_sse();
@@ -75,18 +99,15 @@ void kernel_initialize(void) {
 	init_gdt_local();
 	tss_set_kernel_stack((uint64_t)kernel_stack + KERNEL_STACK_SIZE);
 	
+	init_smp_data();
+
 	intr_init();
 	init_syscall();
 	init_multitasking();
 	printf("multitasking enabled\n");
 	kbd_init();
-	
-	sti();
 	init_rtc();
-	
 	//smp_init();
-
 	//asm volatile("cli; hlt");
-
 	printf("KERNEL INIT DONE!\n");
 }

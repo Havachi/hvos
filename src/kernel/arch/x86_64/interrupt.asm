@@ -8,15 +8,19 @@ global spurious_interrupt
 global keyboard_interrupt
 global pagefault_interrupt
 global gpf_exc
+global generic_exeption_handler
 
 extern g_pit_ticks
 extern g_local_apic_address
 extern exception_dump
-extern scheduler_c
+extern schedule
 extern keyboard_handler_c
 extern page_fault_handler_c
 extern gpf_execption_handler_c
 extern update_cursor
+extern update_curr_thread
+extern context_switch
+
 default_exception_handler:
 	jmp $
 
@@ -96,6 +100,10 @@ exception_body:
 
 pit_interrupt:
 	cli
+	test qword [rsp + 8],3
+	jz .from_kernel
+	swapgs
+.from_kernel:
 	push r15
 	push r14
 	push r13
@@ -113,16 +121,23 @@ pit_interrupt:
 	push rax
 
 	inc qword [rel g_pit_ticks]
-
 	mov rax, [rel g_local_apic_address]
 	mov dword [rax + 0xB0], 0
 
 	call update_cursor
+	call update_curr_thread
 
-	mov rdi, rsp
-	call scheduler_c
-	mov rsp, rax
+	;mov rdi, rsp
+	;mov rsi, 1
+	;call schedule
+	;mov rsp, rax
 
+global pit_interrupt_exit
+pit_interrupt_exit:
+	test qword [rsp + 128], 3
+	jz .to_kernel
+	swapgs
+.to_kernel:
 	pop rax
 	pop rbx
 	pop rcx
@@ -260,6 +275,44 @@ gpf_exc:
 	pop r15
 	add rsp, 8 
 	iretq
+
+
+generic_exeption_handler:
+	push r15
+	push r14
+	push r13
+	push r12
+	push r11
+	push r10
+	push r9
+	push r8
+	push rbp
+	push rdi
+	push rsi
+	push rdx
+	push rcx
+	push rbx
+	push rax
+
+	call exception_dump
+
+	pop rax
+	pop rbx
+	pop rcx
+	pop rdx
+	pop rsi
+	pop rdi
+	pop rbp
+	pop r8
+	pop r9
+	pop r10
+	pop r11
+	pop r12
+	pop r13
+	pop r14
+	pop r15
+	iretq
+
 
 spurious_interrupt:
 	iretq

@@ -19,14 +19,10 @@ typedef struct process_s {
 	int exit_code;
 	bool is_waiting;
 	uint64_t wait_target_pid;
-
 	file_t *file_table[MAX_FILES_PER_PROCESS];
-	uint32_t thread_count;
 	struct thread_s *primary;
-	struct process_s *next;
-
-
 } process_t;
+
 
 process_t *new_process();
 process_t *new_elf_process(uint64_t rip, uint64_t ustack, uint64_t kstack);

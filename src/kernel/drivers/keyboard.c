@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include "cpu/io.h"
 
+extern void kernel_yield();
+
 uint32_t kdb_queue_occupancy = 0;
 static char kdb_queue[KDB_BUFFER_SIZE];
 uint32_t kdb_head = 0;
@@ -81,6 +83,7 @@ void keyboard_handler_c(void) {
 			c = normal_scan_code_table[scancode];
 		}
 		append_to_input_buffer(c);
+		kernel_yield();
 }
 
 char keyboard_get_char(void) {

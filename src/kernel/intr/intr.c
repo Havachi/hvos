@@ -13,6 +13,10 @@ extern void pagefault_interrupt(void);
 extern void gpf_exc(void);
 extern void generic_exeption_handler(void);
 
+void no_intr() {
+	return;
+}
+
 void intr_init() {
 	idt_init();
 	idt_set_handler(INT_TIMER, INTERRUPT_GATE, pit_interrupt);

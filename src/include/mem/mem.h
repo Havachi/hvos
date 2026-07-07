@@ -8,20 +8,20 @@
 #include "mem/paging.h"
 
 
-#define PAGE_SIZE		4096
-#define PTE_PRESENT		(1ULL << 0)
-#define PTE_WRITABLE	(1ULL << 1)
-#define PTE_USER		(1ULL << 2)
-#define PTE_PWT			(1ULL << 3)
-#define PTE_PCD			(1ULL << 4)
-#define PTE_NX			(1ULL << 63)
-#define PTE_ADDR_MASK	0x000ffffffffff000
-#define USR_STACK_BASE	0x00007FFFFFFFF000
-#define KERNEL_HEAP_START 0xffffa00000000000
-#define USR_HEAP_BASE	0x10000000
-#define PHYS_TO_VIRT(phys) ((uint64_t)(phys) + hhdm_offset)
-#define VIRT_TO_PHYS(virt) (((uint64_t)(virt) != 0) ? ((uint64_t)(virt) - hhdm_offset) : (uint64_t)(virt))
-#define KERNEL_STACK_SIZE 16384
+#define PAGE_SIZE			4096
+#define PTE_PRESENT			(1ULL << 0)
+#define PTE_WRITABLE		(1ULL << 1)
+#define PTE_USER			(1ULL << 2)
+#define PTE_PWT				(1ULL << 3)
+#define PTE_PCD				(1ULL << 4)
+#define PTE_NX				(1ULL << 63)
+#define PTE_ADDR_MASK		0x000ffffffffff000
+#define USR_STACK_BASE		0x00007FFFFFFFF000
+#define KERNEL_HEAP_START 	0xffffa00000000000
+#define USR_HEAP_BASE		0x10000000
+#define PHYS_TO_VIRT(phys)	((uint64_t)(phys) + hhdm_offset)
+#define VIRT_TO_PHYS(virt)	(((uint64_t)(virt) != 0) ? ((uint64_t)(virt) - hhdm_offset) : (uint64_t)(virt))
+#define KERNEL_STACK_SIZE 	16384
 
 extern uint8_t kernel_stack[KERNEL_STACK_SIZE] __aligned(16);
 

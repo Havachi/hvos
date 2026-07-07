@@ -99,11 +99,11 @@ exception_body:
 	jmp $
 
 pit_interrupt:
+	cli
 	test qword [rsp + 8],3
 	jz .from_kernel
 	swapgs
 .from_kernel:
-	cli
 	push r15
 	push r14
 	push r13
@@ -127,10 +127,10 @@ pit_interrupt:
 	call update_cursor
 	call update_curr_thread
 
-	mov rdi, rsp
-	mov rsi, 1
-	call schedule
-	mov rsp, rax
+	;mov rdi, rsp
+	;mov rsi, 1
+	;call schedule
+	;mov rsp, rax
 
 global pit_interrupt_exit
 pit_interrupt_exit:

@@ -21,6 +21,7 @@ extern schedule
 global timer_handler_asm
 
 timer_handler_asm:
+    cli
     cmp qword [rsp + 8], 0x2B
     jne .skip_swapgs_entry
     swapgs
@@ -45,7 +46,6 @@ timer_handler_asm:
     mov rsi, 99
 	call schedule
 	mov rsp, rax
-    
     pop r15
     pop r14
     pop r13
@@ -67,4 +67,5 @@ timer_handler_asm:
     swapgs
 
 .skip_swapgs_exit:
+    sti
     iretq

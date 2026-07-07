@@ -20,7 +20,7 @@ void heap_init(void) {
 	init_block->is_free = true;
 	init_block->next = NULL;
 	heap_free_list = init_block;
-	printf("head size: %d pages", HEAP_INIT_PAGES);
+	printf("head size: %d pages\n", HEAP_INIT_PAGES);
 }
 
 int heap_expand(uint64_t size_needed) {

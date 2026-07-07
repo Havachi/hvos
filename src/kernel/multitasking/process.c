@@ -35,7 +35,6 @@ process_t *new_process() {
 	p->file_table[0] = create_kernel_console_file(O_RDONLY);
 	p->file_table[1] = create_kernel_console_file(O_WRONLY);
 	p->file_table[2] = create_kernel_console_file(O_WRONLY);
-	p->thread_count = 0;
 	p->primary = NULL;
 	return p;
 }
@@ -81,3 +80,10 @@ process_t *process_by_pid (uint64_t pid) {
 	list_t *process_list = get_cpu_task_list()->process_list;
 	return (process_t *)get_first_match(process_list, _cb_process_by_pid, (void *)(uintptr_t)pid);
 }
+
+
+process_t *clone_process(process_t *process) {
+	process_t *child = new_process();
+	child->parent = process;
+}
+

@@ -60,7 +60,7 @@ void kmain(void) {
     clear_screen();
 
 	printf("Term: %dx%d\n", fb->width, fb->height);
-	uint64_t ram_bytes = memmap_get_total_pages(memmap_request.response) * 4096;
+	uint64_t ram_bytes = memmap_get_total_pages(memmap_request.response) * PAGE_SIZE;
 	print_available_ram(ram_bytes);
     printf("CPU with %d core\n", g_acpi_cpu_count);
     printf("%s\n", datetime_to_str(now()));

@@ -152,15 +152,12 @@ void update_curr_thread(void) {
 void notify_wait_channel(void *channel) {
 	if (channel == NULL) return;
 	cpu_task_list_t *cpu = get_cpu_task_list();
-	list_node_t *curr = cpu->thread_list->head;
-
-	while (curr != NULL) {
-		thread_t *t = (thread_t *)curr->data;
+	for (uint64_t i = 0; i < cpu->thread_list->count; i++) {
+		thread_t *t = list_get_at(cpu->thread_list, i);
 		if (t->state == STATE_WAITING && t->block_channel == channel) {
 			t->state = STATE_READY;
 			t->block_channel = NULL;
 			break;
 		}
-		curr = curr->next;
 	}
 }

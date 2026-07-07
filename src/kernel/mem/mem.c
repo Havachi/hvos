@@ -218,7 +218,7 @@ void init_mem(struct limine_memmap_response *memmap) {
 	
 
 	memcpy(kernel_pml4, old_pml4, PAGE_SIZE);
-
+	
 	map_ram(memmap);
 
 	uint64_t kernel_paddr = kernel_address_request.response->physical_base;

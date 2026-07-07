@@ -65,7 +65,7 @@ void kmain(void) {
     printf("CPU with %d core\n", g_acpi_cpu_count);
     printf("%s\n", datetime_to_str(now()));
     printf("loading shell\n");
-	int pid = execute_elf("/shell.elf");
+	int pid = execute_elf("/init.elf");
     printf("[KERNEL] INIT PID %d\n", pid);
     __asm__ __volatile__("sti");
 

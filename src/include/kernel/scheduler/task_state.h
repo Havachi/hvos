@@ -6,5 +6,6 @@
 #define STATE_RUNNING		2
 #define STATE_WAITING		3
 #define STATE_DEAD			4
+#define STATE_SLEEPING		5
 
 #endif

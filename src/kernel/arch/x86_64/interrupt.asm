@@ -20,6 +20,7 @@ extern gpf_execption_handler_c
 extern update_cursor
 extern update_curr_thread
 extern context_switch
+extern update_sleeping_queue
 
 default_exception_handler:
 	jmp $
@@ -126,7 +127,7 @@ pit_interrupt:
 
 	call update_cursor
 	call update_curr_thread
-
+	call update_sleeping_queue
 	;mov rdi, rsp
 	;mov rsi, 1
 	;call schedule

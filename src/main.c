@@ -1,6 +1,7 @@
 #include "include/asm/asm.h"
 #include "include/cpu/io.h"
 #include "include/kernel/acpi.h"
+#include "include/kernel/scheduler/mt.h"
 #include "include/kernel/scheduler/process.h"
 #include "include/kernel/scheduler/task.h"
 #include "include/kernel/scheduler/thread.h"
@@ -70,7 +71,13 @@ void kmain(void) {
     __asm__ __volatile__("sti");
 
     sys_waitpid(pid);
-    printf("rebooting...");
-	reboot();
+    printf("rebooting");
+    kusleep(100);
+    printf(".");
+    kusleep(100);
+    printf(".");
+    kusleep(100);
+    printf(".");
+    reboot();
     abort();
 }

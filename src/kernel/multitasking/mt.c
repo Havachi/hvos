@@ -21,6 +21,7 @@ void idle_loop() {
 			::
 			: "memory"
 		);
+		kernel_yield();
 	}
 }
 
@@ -71,6 +72,7 @@ void init_multitasking(){
 	bsp_task_list->min_vruntime = 10;
 	bsp_task_list->thread_count = 0;
 
+	bsp_task_list->sleeping_queue = init_list();
 	init_bsp_main_process();
 	//bsp_task_list->idle_task = new_idle_task();
 }

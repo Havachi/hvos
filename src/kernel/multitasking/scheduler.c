@@ -4,6 +4,7 @@
 #include "kernel/smp.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define MAX_VRUNTIME  200
@@ -92,6 +93,7 @@ uint64_t schedule(uint64_t old_rsp, uint64_t from) {
 
 	current_thread->k_rsp = (void *)old_rsp;
 
+
 	thread_t *next_thread = get_next_thread();
 
 	if (next_thread == NULL) {
@@ -160,4 +162,50 @@ void notify_wait_channel(void *channel) {
 			break;
 		}
 	}
+}
+
+
+void update_sleeping_queue() {
+	cpu_task_list_t *cpu = get_cpu_task_list();
+
+	if (cpu->sleeping_queue->count == 0)
+		return;
+	delta_queue_entry_t *top = list_get_at(cpu->sleeping_queue, 0);
+	if (top->delta == 0){
+		for (uint64_t i = 0; i < cpu->thread_list->count; i++) {
+			thread_t *t = list_get_at(cpu->thread_list, i);
+			if (t->tid == top->tid) {
+				t->state = STATE_READY;
+
+			}
+		}
+		list_pop(cpu->sleeping_queue);
+	} else {
+		top->delta--;
+	}
+}
+
+uint64_t get_total_delta(){ 
+	cpu_task_list_t *cpu = get_cpu_task_list();
+
+	uint64_t total_delta = 0;
+	for (uint64_t i = 0; i < cpu->sleeping_queue->count; i++) {
+		delta_queue_entry_t *dt = (delta_queue_entry_t *)list_get_at(cpu->sleeping_queue, i);
+		total_delta += dt->delta;
+	}
+	return total_delta;
+}
+
+void ksleep(uint64_t s) {
+	kusleep(s*1000);
+}
+
+void kusleep(uint64_t ms) {
+	cpu_task_list_t *cpu = get_cpu_task_list();
+	cpu->current_thread->state = STATE_SLEEPING;
+	delta_queue_entry_t *dt = kmalloc(sizeof(delta_queue_entry_t));
+	dt->delta = (ms - get_total_delta());
+	dt->tid = cpu->current_thread->tid;
+	list_push(cpu->sleeping_queue, (void*)dt);
+	kernel_yield();
 }

@@ -91,8 +91,14 @@ typedef struct {
     list_t *process_list;
     list_t *thread_list;
     thread_t *current_thread;
+    uint64_t nb_sleeping;
+    list_t *sleeping_queue;
 } cpu_task_list_t;
 
+typedef struct {
+    uint64_t tid;
+    uint64_t delta;
+} delta_queue_entry_t; 
 
 uint64_t schedule(uint64_t old_rsp, uint64_t from);
 void init_multitasking();
@@ -122,5 +128,7 @@ thread_t *find_idle_thread(list_t *thread_list);
 
 void notify_wait_channel(void *channel);
 extern void kernel_yield(void);
+void ksleep(uint64_t s);
+void kusleep(uint64_t ms);
 
 #endif

@@ -5,7 +5,6 @@
 volatile uint64_t g_pit_ticks;
 extern uint8_t *g_local_apic_address;
 
-#define DEBUGGING 1
 
 void pit_init(){
 #ifdef DEBUGGING

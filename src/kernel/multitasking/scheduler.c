@@ -104,8 +104,6 @@ uint64_t schedule(uint64_t old_rsp, uint64_t from) {
 		}
 		next_thread = find_idle_thread(cpu_list->thread_list);
 	}
-
-
 	if (current_thread == next_thread) {
 		current_thread->state = STATE_RUNNING;
 		return (uint64_t)current_thread->k_rsp;
@@ -136,6 +134,14 @@ uint64_t schedule(uint64_t old_rsp, uint64_t from) {
 
 	return (uint64_t)next_thread->k_rsp;
 }
+void chk_rsp(){
+	uint64_t cu_rsp;
+	__asm__ volatile("mov %%rsp, %0" : "=r"(cu_rsp));
+
+	if (cu_rsp >= 0xffffa00000800000 && cu_rsp <= 0xffffa00000900000) {
+		printf("\n\nMEGAFUN! RSP: %p\n", cu_rsp);
+	}
+}
 
 void update_curr_thread(void) {
 	cpu_task_list_t *cpu_list = get_cpu_task_list();
@@ -143,7 +149,6 @@ void update_curr_thread(void) {
 	if (current_thread == NULL) {
 		return;
 	}
-
 	current_thread->vruntime++;
 
 	if (current_thread->sleep_ticks > 0) {
@@ -167,10 +172,13 @@ void notify_wait_channel(void *channel) {
 
 void update_sleeping_queue() {
 	cpu_task_list_t *cpu = get_cpu_task_list();
-
+	delta_queue_entry_t *top = NULL;
 	if (cpu->sleeping_queue->count == 0)
 		return;
-	delta_queue_entry_t *top = list_get_at(cpu->sleeping_queue, 0);
+	top = list_get_at(cpu->sleeping_queue, 0);
+	if (top == NULL) {
+		return;
+	}
 	if (top->delta == 0){
 		for (uint64_t i = 0; i < cpu->thread_list->count; i++) {
 			thread_t *t = list_get_at(cpu->thread_list, i);

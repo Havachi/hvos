@@ -144,6 +144,8 @@ HVLIBC_DIR := hvlibc
 INSTALLED_LIBK:= $(SYSROOT_DIR)/usr/lib/libk.a
 INSTALLED_LIBC:= $(SYSROOT_DIR)/usr/lib/libc.a
 
+DRIVE_FILE := drv0.img
+
 # Default target. This must come first, before header dependencies.
 .PHONY: all
 all: bin/$(OUTPUT) $(USERLANDPROG)
@@ -198,15 +200,25 @@ $(ISOOUT): bin/$(OUTPUT) $(INITRAMFSFILEPATH)
 		$(ISOROOTDIR) -o $(ISOOUT)
 
 
+QEMU_DRIVE_FLAGS := -device ich9-ahci,id=ahci \
+					-drive id=boot_cd,file=$(ISOOUT),format=raw,if=none \
+					-device ide-cd,drive=boot_cd,bus=ahci.0 \
+					-drive id=disk0,file=$(DRIVE_FILE),format=raw,if=none \
+					-device ide-hd,drive=disk0,bus=ahci.1 \
+					-boot d
 
 installbios:
 	@./limine-binary/limine bios-install $(ISOOUT)
 
-rundbg: $(ISOOUT) installbios
-	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -cdrom $(ISOOUT) -monitor stdio -d int -no-reboot -no-shutdown
+rundbg: $(ISOOUT) installbios $(DRIVE_FILE)
+	@qemu-system-x86_64 -S -gdb tcp::1234 -m 1G -smp 4 -daemonize -d int $(QEMU_DRIVE_FLAGS)
+runint: $(ISOOUT) installbios $(DRIVE_FILE)
+	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -monitor stdio -d int -no-reboot -no-shutdown $(QEMU_DRIVE_FLAGS)
 
-run: $(ISOOUT) installbios
-	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 2G -cdrom $(ISOOUT) -monitor stdio -smp 4
+run: $(ISOOUT) installbios $(DRIVE_FILE)
+	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 2G -monitor stdio -smp 4 $(QEMU_DRIVE_FLAGS)
+
+
 
 # Remove object files and the final executable.
 clean:
@@ -270,6 +282,9 @@ install_hvos_header:
 
 fclean_sysroot:
 	rm -rf $(SYSROOT_DIR)
+
+$(DRIVE_FILE):
+	qemu-img create -f raw $(DRIVE_FILE) 256M
 
 full: fclean fclean_lib fclean_sysroot mkbasesysroot install_hvlibc install_headers all
 

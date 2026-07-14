@@ -1,3 +1,5 @@
+#include "drivers/ata.h"
+#include "drivers/pci.h"
 #include "kernel/boot.h"
 #include "kernel/elf.h"
 #include "kernel/gdt.h"
@@ -107,6 +109,7 @@ void kernel_initialize(void) {
 	printf("multitasking enabled\n");
 	kbd_init();
 	init_rtc();
+	init_pci();
 	//smp_init();
 	//asm volatile("cli; hlt");
 	printf("KERNEL INIT DONE!\n");

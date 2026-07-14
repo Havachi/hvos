@@ -1,3 +1,6 @@
+#include "drivers/ahci.h"
+#include "drivers/ata.h"
+#include "drivers/pci.h"
 #include "include/asm/asm.h"
 #include "include/cpu/io.h"
 #include "include/kernel/acpi.h"
@@ -64,6 +67,8 @@ void kmain(void) {
 	uint64_t ram_bytes = memmap_get_total_pages(memmap_request.response) * PAGE_SIZE;
 	print_available_ram(ram_bytes);
     printf("CPU with %d core\n", g_acpi_cpu_count);
+    print_all_pci();
+    init_ahci();
     printf("%s\n", datetime_to_str(now()));
     printf("loading shell\n");
 	int pid = execute_elf("/init.elf");
@@ -72,12 +77,6 @@ void kmain(void) {
 
     sys_waitpid(pid);
     printf("rebooting");
-    kusleep(100);
-    printf(".");
-    kusleep(100);
-    printf(".");
-    kusleep(100);
-    printf(".");
     reboot();
     abort();
 }

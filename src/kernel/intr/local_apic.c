@@ -1,6 +1,7 @@
 #include "kernel/local_apic.h"
 
 uint8_t *g_local_apic_address;
+uint32_t local_apic_id = 255;
 
 static uint32_t local_apic_in(uint32_t reg) {
 	return mmio_read_32(g_local_apic_address + reg);
@@ -24,7 +25,12 @@ void local_apic_timer_init() {
 }
 
 uint32_t local_apic_get_id() {
-	return local_apic_in(LAPIC_ID) >> 24;
+	if (local_apic_id != 255 ){
+		return local_apic_id;
+	} else {
+		local_apic_id = local_apic_in(LAPIC_ID) >> 24;
+	}
+	return local_apic_id;
 }
 
 void local_apic_send_init(uint32_t apic_id) {

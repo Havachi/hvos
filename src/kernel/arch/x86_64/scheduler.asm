@@ -67,15 +67,16 @@ switch_to:
 
 
 kernel_yield:
+	cli
 	mov rax, ss
 	push rax
-	push rsp
-	add qword [rsp], 8
+	mov rax, rsp
+	add rax, 8
+	push rax
 	pushfq
 	mov rax, cs
 	push rax
-
-	mov rax, [rsp + 32]
+	mov rax,[rsp + 32]
 	push rax
 
 	push r15
@@ -98,6 +99,4 @@ kernel_yield:
 	call schedule
 	mov rsp, rax
 
-	jmp pit_interrupt_exit
-
-	ret
+  	jmp pit_interrupt_exit

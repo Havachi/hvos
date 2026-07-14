@@ -24,8 +24,9 @@ list_node_t *new_node(void *data, list_node_t *next) {
 }
 
 void *list_get_at(list_t *list, unsigned long at) {
-	list_node_t *node = list_get_node_at(list, at);
-	return node != NULL ? node->data : NULL;
+	list_node_t *node = NULL;
+	node = list_get_node_at(list, at);
+	return node != NULL ? ((node->data == NULL) ? NULL : node->data) : NULL;
 }
 
 list_node_t *list_get_node_at(list_t *list, unsigned long at) {

@@ -8,7 +8,6 @@
 
 cpu_task_list_t **cpu_task_lists;
 task_t bsp_main_task;
-
 void init_ap(){
 
 }
@@ -38,7 +37,8 @@ void init_bsp_main_process() {
 	sprintf(bsp_main_thread->name, "MAIN_THREAD\0");
 	bsp_main_thread->process = bsp_main_process;
 	bsp_main_thread->kernel_stack_base = (void *)((uint64_t)kernel_stack + KERNEL_STACK_SIZE);
-	uint64_t idle_stack_top = (uint64_t)kzalloc(PAGE_SIZE) + PAGE_SIZE;
+	uint64_t idle_stack_top = (uint64_t)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+
 	thread_t *bsp_idle_thread = new_kernel_thread((uint64_t)idle_loop, idle_stack_top);
 
 	bsp_idle_thread->state = STATE_READY;

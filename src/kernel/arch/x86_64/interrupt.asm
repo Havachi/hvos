@@ -21,7 +21,7 @@ extern update_cursor
 extern update_curr_thread
 extern context_switch
 extern update_sleeping_queue
-
+extern chk_rsp
 default_exception_handler:
 	jmp $
 
@@ -125,6 +125,7 @@ pit_interrupt:
 	mov rax, [rel g_local_apic_address]
 	mov dword [rax + 0xB0], 0
 
+	;call chk_rsp
 	call update_cursor
 	call update_curr_thread
 	call update_sleeping_queue

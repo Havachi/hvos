@@ -5,7 +5,7 @@
 		"label": "Launch QEMU",
 		"type": "shell",
 		"linux": {
-			"command": "qemu-system-x86_64 -S -gdb tcp::1234 -boot d -cdrom hvos-boot.iso -m 1G -smp 4 -daemonize -d int"
+			"command": "make rundbg"
 		}
 	},
 	{

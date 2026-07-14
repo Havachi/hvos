@@ -12,7 +12,7 @@ ext2_sb_t *alloc_sb() {
 }
 
 ext2_sb_t *read_sb() {
-
+	
 }
 
 void write_sb(ext2_sb_t *sb){

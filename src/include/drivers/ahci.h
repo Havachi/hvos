@@ -218,86 +218,43 @@ typedef union {
 }__attribute__ ((__packed__))  hba_bohc_t;
 
 typedef struct {
-	uint32_t clb;		// 0x00, command list base address, 1K-byte aligned
-	uint32_t clbu;		// 0x04, command list base address upper 32 bits
-	uint32_t fb;		// 0x08, FIS base address, 256-byte aligned
-	uint32_t fbu;		// 0x0C, FIS base address upper 32 bits
-	uint32_t is;		// 0x10, interrupt status
-	uint32_t ie;		// 0x14, interrupt enable
-	uint32_t cmd;		// 0x18, command and status
-	uint32_t rsv0;		// 0x1C, Reserved
-	uint32_t tfd;		// 0x20, task file data
-	uint32_t sig;		// 0x24, signature
-	uint32_t ssts;		// 0x28, SATA status (SCR0:SStatus)
-	uint32_t sctl;		// 0x2C, SATA control (SCR2:SControl)
-	uint32_t serr;		// 0x30, SATA error (SCR1:SError)
-	uint32_t sact;		// 0x34, SATA active (SCR3:SActive)
-	uint32_t ci;		// 0x38, command issue
-	uint32_t sntf;		// 0x3C, SATA notification (SCR4:SNotification)
-	uint32_t fbs;		// 0x40, FIS-based switch control
-	uint32_t rsv1[11];	// 0x44 ~ 0x6F, Reserved
-	uint32_t vendor[4];	// 0x70 ~ 0x7F, vendor specific	
-} hba_port_t;
-
-typedef union {
-	struct {
-		hba_cap_t cap;
-		hba_ghc_t ghc;
-		uint32_t is;
-		uint32_t pi;
-		uint32_t vs;
-		uint32_t ccc_ctl;
-		uint32_t ccc_pts;
-		uint32_t em_loc;
-		uint32_t em_ctl;
-		uint32_t cap2;
-		hba_bohc_t bohc;
-		uint8_t rsv[0xA0-0x2C];
-		uint8_t vendor[0x100-0xA0];
-		hba_port_t ports[32];
-	}__attribute__ ((__packed__));
-
-	uint32_t *_raw;
-}__attribute__ ((__packed__)) hba_mem_t;
+    volatile uint32_t clb, clbu, fb, fbu, is, ie, cmd, rsv0, tfd, sig, ssts, sctl, serr, sact, ci, sntf, fbs;
+    volatile uint32_t rsv1[11], vendor[4];
+} __attribute__((__packed__)) hba_port_t;
 
 typedef struct {
-	uint8_t		cfl:5;
-	uint8_t		a:1;
-	uint8_t		w:1;
-	uint8_t		p:1;
-	uint8_t		r:1;
-	uint8_t		b:1;
-	uint8_t		c:1;
-	uint8_t		rsv0:1;
-	uint8_t		pmp:4;
-	uint16_t	prdtl;
-	volatile uint32_t prdbc;
-	uint32_t ctba;
-	uint32_t ctbau;
-	uint32_t reserved[4];
+    uint32_t cap, ghc;
+    volatile uint32_t is, pi;
+    uint32_t vs, ccc_ctl, ccc_pts, em_loc, em_ctl, cap2, bohc;
+    uint8_t  rsv[0xA0 - 0x2C];
+    uint8_t  vendor[0x100 - 0xA0];
+    hba_port_t ports[32];
+} __attribute__ ((__packed__)) hba_mem_t;
+
+typedef struct {
+    uint8_t  cfl:5, a:1, w:1, p:1, r:1, b:1, c:1, rsv0:1, pmp:4;
+    uint16_t prdtl;
+    volatile uint32_t prdbc;
+    uint32_t ctba, ctbau, reserved[4];
 } __attribute__ ((__packed__)) hba_cmd_header_t;
 
 typedef struct {
-	uint32_t	dba;
-	uint32_t	dbau;
-	uint32_t	rsv0;
-	uint32_t	dbc:22;
-	uint32_t	rsv1:9;
-	uint32_t	i:1;
+    uint32_t dba, dbau, rsv0;
+    uint32_t dbc:22, rsv1:9, i:1;
 } __attribute__ ((__packed__)) hba_prdt_entry_t;
 
 typedef struct {
-	uint8_t	cfis[64];
-	uint8_t	acmd[16];
-	uint8_t	rsv[48];
-	hba_prdt_entry_t prdt_entry[1];
+    uint8_t  cfis[64], acmd[16], rsv[48];
+    hba_prdt_entry_t prdt_entry[]; // Dynamically sized
 } __attribute__ ((__packed__)) hba_cmd_table_t;
 
 typedef struct {
-	hba_cmd_header_t clb[32];
-	uint8_t fb[256];
-	uint8_t reserved[2816];
-} __attribute__ ((__packed__, aligned(4096))) ahci_port_mem_t; 
+    hba_cmd_header_t clb[32]; // 1024 bytes
+    uint8_t fb[256];          // 256 bytes
+    // Explicitly allocate space for command tables to avoid under-allocation
+    uint8_t cmd_tables[32 * 1024]; // 32 slots * 1KB max table size
+} __attribute__ ((__packed__, aligned(4096))) ahci_port_mem_t;
+
 void init_ahci();
 bool ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buf);
 

@@ -83,13 +83,16 @@ static void start_cmd(hba_port_t *port) {
 	port->cmd |= HBA_PxCMD_ST;	
 }
 
-static hba_cmd_header_t *get_port_cmdheader(hba_port_t *port) {
-	return (hba_cmd_header_t *)PHYS_TO_VIRT((uint64_t)(((uint64_t)port->clbu << 32) | ((uint64_t)port->clb)));
+static hba_cmd_header_t *get_port_cmdheader(hba_port_t *port, int slot) {
+	uint64_t phys_base = ((uint64_t)port->clbu >> 32 | (uint64_t)port->clb);
+	hba_cmd_header_t *cmd_list_base = (hba_cmd_header_t *)PHYS_TO_VIRT(phys_base);
+	return &cmd_list_base[slot];
 }
 
-static hba_cmd_table_t *get_port_cmdtbl(hba_port_t *port) {
-	hba_cmd_header_t *cmd_header = get_port_cmdheader(port);
-	return (hba_cmd_table_t *)PHYS_TO_VIRT((uint64_t)(((uint64_t)cmd_header->ctbau << 32) | ((uint64_t) cmd_header->ctba)));;
+static hba_cmd_table_t *get_port_cmdtbl(hba_port_t *port, int slot) {
+	hba_cmd_header_t *cmd_header = get_port_cmdheader(port, slot);
+	uint64_t table_phys_addr = ((uint64_t)cmd_header->ctbau >> 32 | (uint64_t)cmd_header->ctba);
+	return (hba_cmd_table_t *)PHYS_TO_VIRT(table_phys_addr);
 }
 
 void ahci_port_rebase(hba_port_t *port, int portno) {
@@ -97,32 +100,39 @@ void ahci_port_rebase(hba_port_t *port, int portno) {
 	io_wait();
 	io_wait();
 	io_wait();
-	uintptr_t phys_page = (uintptr_t)pmm_alloc();
-	uintptr_t virt_port_addr = ((uintptr_t)phys_page) + hhdm_offset;
-	map_page(kernel_pml4, virt_port_addr, phys_page, PTE_PRESENT | PTE_WRITABLE);
-	ahci_port_mem_t* port_mem = (ahci_port_mem_t *)virt_port_addr;
 
-	memset(port_mem, 0, sizeof(ahci_port_mem_t));
+	uintptr_t phys_page = (uintptr_t)pmm_alloc_n(3);
+	uintptr_t virt_port_addr = PHYS_TO_VIRT(phys_page);
+	for (uintptr_t p = 0; p < 3; p++){
+		map_page(kernel_pml4, virt_port_addr + (p * PAGE_SIZE), phys_page + (p * PAGE_SIZE), PTE_PRESENT | PTE_WRITABLE);
+	}
+	memset((void *)virt_port_addr, 0, 3 * 4096);
+
+
 	uintptr_t clb_phys_addr = phys_page;
 	uintptr_t fb_phys_addr = phys_page + 1024;
+	uintptr_t cmdtbl_phys_base = phys_page + 1280;
 
-	port->clb = clb_phys_addr & 0xFFFFFFFF;
-	port->clbu = (clb_phys_addr >> 32) & 0xFFFFFFFF;
-	port->fb = fb_phys_addr & 0xFFFFFFFF;
-	port->fbu = (fb_phys_addr >> 32) & 0xFFFFFFFF;
-	hba_cmd_header_t *cmd_header = get_port_cmdheader(port);
+	port->clb = (uint32_t)(clb_phys_addr & 0xFFFFFFFF);
+	port->clbu = (uint32_t)((clb_phys_addr >> 32) & 0xFFFFFFFF);
+
+	port->fb = (uint32_t)(fb_phys_addr & 0xFFFFFFFF);
+	port->fbu = (uint32_t)((fb_phys_addr >> 32) & 0xFFFFFFFF);
+
 	for (int i = 0; i < 32; i++) {
-		uintptr_t addr = phys_page + (40<<10) + (portno << 13) + (i << 8);
+		uintptr_t cmdtbl_addr = cmdtbl_phys_base + (i * 256);
+		hba_cmd_header_t *cmd_header = get_port_cmdheader(port, i);
+		
 		cmd_header[i].prdtl = 8;
-		cmd_header[i].ctba = addr & 0xFFFFFFFF;
-		cmd_header[i].ctbau = (addr >> 32) & 0xFFFFFFFF;
+		cmd_header[i].ctba = (uint32_t)(cmdtbl_addr & 0xFFFFFFFF);
+		cmd_header[i].ctbau = (uint32_t)((cmdtbl_addr >> 32) & 0xFFFFFFFF);
 	}
 	start_cmd(port);
 }
 
 static int find_cmdslot(hba_port_t *port) {
 	uint32_t slots = (port->sact | port->ci);
-	for (int i = 0; i < ahci_mem->cap.ncs; i++) {
+	for (int i = 0; i < ((hba_cap_t)ahci_mem->cap).ncs; i++) {
 		if ((slots&1) == 0)
 			return i;
 		slots >>= 1;
@@ -130,54 +140,67 @@ static int find_cmdslot(hba_port_t *port) {
 	return -1;
 }
 
-bool ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buf){
-	port->is = (uint32_t) -1;
-	int spin = 0;
+
+static bool ahci_io_sectors(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, void *buffer, bool is_write, uint8_t ata_command) {
+	port->is = 0xFFFFFFFF;
 	int slot = find_cmdslot(port);
 	if (slot == -1)
 		return false;
-	hba_cmd_header_t *cmd_header = get_port_cmdheader(port);
-	
-	cmd_header += slot;
-	cmd_header->cfl = sizeof(fis_reg_h2d_t)/(sizeof(uint32_t));
-	cmd_header->w = 0;
-	cmd_header->prdtl = (uint16_t)((count-1) >> 4) + 1;
 
-	hba_cmd_table_t *cmdtbl = get_port_cmdtbl(port);
-	memset(cmdtbl, 0, sizeof(hba_cmd_table_t) +
-		(cmd_header->prdtl-1) * sizeof(hba_prdt_entry_t));
-	
-	for(int i = 0; i < cmd_header->prdtl-1; i++) {
-		cmdtbl->prdt_entry[i].dba = (uint32_t) buf;
-		cmdtbl->prdt_entry[i].dbc = 8*1024-1;
-		cmdtbl->prdt_entry[i].i = 1;
-		buf += 4*1024;
-		count -= 16;
+	hba_cmd_header_t *cmd_header = get_port_cmdheader(port, slot);
+	hba_cmd_table_t *cmdtbl = get_port_cmdtbl(port, slot);
+
+	cmd_header->cfl = sizeof(fis_reg_h2d_t)/(sizeof(uint32_t));
+	cmd_header->w = is_write ? 1 : 0;
+	uint32_t sectors_per_prdt = 16;
+	uint32_t bytes_per_prdt = sectors_per_prdt * 512;
+	uint16_t prdt_entries = (uint16_t)((count + sectors_per_prdt - 1) / sectors_per_prdt);
+	cmd_header->prdtl = prdt_entries;
+
+	size_t cmdtbl_size = sizeof(hba_cmd_table_t) + (prdt_entries * sizeof(hba_prdt_entry_t));
+	memset(cmdtbl, 0, cmdtbl_size);
+
+	uint64_t current_buf_addr = (uint64_t) buffer;
+	uint32_t sectors_left = count;
+
+	for (int i = 0; i < prdt_entries; i++) {
+		cmdtbl->prdt_entry[i].dba = (uint32_t)(current_buf_addr & 0xFFFFFFFF);
+		cmdtbl->prdt_entry[i].dbau = (uint32_t)((current_buf_addr >> 32) & 0xFFFFFFFF);
+		cmdtbl->prdt_entry[i].i = 0;
+
+		if(sectors_left <= sectors_per_prdt) {
+			cmdtbl->prdt_entry[i].dbc = (sectors_left * 512) - 1;
+			break;
+		} else {
+			cmdtbl->prdt_entry[i].dbc = bytes_per_prdt - 1;
+			current_buf_addr += bytes_per_prdt;
+			sectors_left -= sectors_per_prdt;
+		}
 	}
-	cmdtbl->prdt_entry[cmd_header->prdtl-1].dba = (uint32_t) buf;
-	cmdtbl->prdt_entry[cmd_header->prdtl-1].dbc = (count<<9)-1;
-	cmdtbl->prdt_entry[cmd_header->prdtl-1].i = 1;
 
 	fis_reg_h2d_t *cmdfis = (fis_reg_h2d_t *)(&cmdtbl->cfis);
 	cmdfis->fis_type = FIS_TYPE_REG_H2D;
 	cmdfis->c = 1;
-	cmdfis->command = ATA_CMD_READ_DMA_EXT;
-	cmdfis->lba0 = (uint8_t)startl;
-	cmdfis->lba1 = (uint8_t)(startl>>8);
-	cmdfis->lba2 = (uint8_t)(startl>>16);
-	cmdfis->device = 1<<6;
+	cmdfis->command = ata_command;
 
+	cmdfis->lba0 = (uint8_t)startl;
+	cmdfis->lba1 = (uint8_t)(startl >> 8);
+	cmdfis->lba2 = (uint8_t)(startl >> 16);
 	cmdfis->lba3 = (uint8_t)(startl >> 24);
 	cmdfis->lba4 = (uint8_t)(starth);
-	cmdfis->lba5 = (uint8_t)(starth>>8);
+	cmdfis->lba5 = (uint8_t)(starth >> 8);
+	
+	cmdfis->device = 1 << 6;
+
 	cmdfis->countl = count & 0xFF;
 	cmdfis->counth = (count >> 8) & 0xFF;
 
+	int spin = 0;
 	while ((port->tfd & (0x80 | 0x08)) && spin < 1000000) {
 		spin++;
 	}
-	if (spin == 1000000) {
-		printf("[AHCI] Port is hung\n");
+	if (spin == 1000000){
+		printf("[AHCI] Disk hung");
 		return false;
 	}
 
@@ -197,6 +220,14 @@ bool ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t coun
 			return false;
 	}
 	return true;
+}
+
+bool ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buffer){
+	return ahci_io_sectors(port, startl, starth, count, buffer, false, ATA_CMD_READ_DMA_EXT);
+}
+
+int ahci_write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buffer) {
+	return ahci_io_sectors(port, startl, starth, count, buffer, true, ATA_CMD_WRITE_DMA_EXT);
 }
 
 void ahci_probe_port() {

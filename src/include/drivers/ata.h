@@ -55,6 +55,7 @@ enum {
 
 #define ATA_CMD_READ_SECT	0x20
 #define ATA_CMD_READ_DMA_EXT 0x25
+#define ATA_CMD_WRITE_DMA_EXT 0x35
 #define ATA_CMD_WRITE_SECT	0x30
 #define ATA_CMD_IDENTIFY	0xEC
 typedef union {

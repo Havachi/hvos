@@ -22,6 +22,8 @@
 #define HBA_PxCMD_FR			0x4000
 #define HBA_PxCMD_CR			0x8000
 
+#define SECTOR_SIZE				512
+
 /*FIS type*/
 typedef enum {
 	FIS_TYPE_REG_H2D	= 0x27,	// Register FIS - host to device
@@ -257,5 +259,8 @@ typedef struct {
 
 void init_ahci();
 bool ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buf);
+bool ahci_write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buffer);
+extern void storage_register_drive(hba_port_t *port);
+uint64_t ahci_get_sector_count(hba_port_t *port);
 
 #endif

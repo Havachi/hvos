@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <sys/cdefs.h>
 
+#define EXT2_SIGNATURE 0xEF53
 
 //Return 1 if the version of ext2 is high enough for the sb to have extended fields
 #define ISSBEXT(sb) (sb->base.v_major >= 1) ? 1 : 0;
@@ -329,6 +330,12 @@ enum {
 };
 
 
-
-
+/*sb.c*/
+ext2_sb_t *alloc_sb();
+ext2_sb_t *phys_alloc_sb();
+ext2_sb_t *new_sb();
+ext2_sb_t *init_sb(ext2_sb_t *sb);
+ext2_sb_t *read_sb();
+void write_sb(ext2_sb_t *sb);
+void init_ext2();
 #endif

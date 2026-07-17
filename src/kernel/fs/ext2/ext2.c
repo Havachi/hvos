@@ -1,4 +1,5 @@
 #include "kernel/fs/ext2.h"
+#include "kernel/fs/block_dev.h"
 #include "mem/mem.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -20,4 +21,8 @@ void init_ext2(){
 		//sb found
 		printf("[EXT2] Superblock found on disk\n");
 	}
+}
+
+uint32_t mkfs_ext2(block_device_t *blkdev) {
+	
 }

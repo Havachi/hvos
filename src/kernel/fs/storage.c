@@ -1,38 +1,35 @@
 #include "kernel/fs/storage.h"
+#include "data_structure/list.h"
+#include "kernel/fs/block_dev.h"
+#include "mem/mem.h"
 #include <stdint.h>
+#include <stdio.h>
 
-boot_drive_t g_boot_drive = {0};
+static char next_drv_letter = 'a';
 
-extern bool ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buf);
-extern bool ahci_write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buf);
+extern list_t *blkdevs_list;
+extern block_device_t *selected_blkdev;
+extern int ahci_read_blocks(block_device_t *dev, uint64_t lba, uint32_t count, void* buffer);
+extern int ahci_write_blocks(block_device_t *dev, uint64_t lba, uint32_t count, const void* buffer);
+extern int ahci_get_drv_stat(block_device_t *dev, void *buffer);
 extern uint64_t ahci_get_sector_count(hba_port_t *port);
 
-bool storage_read_sectors(uint64_t lba, uint32_t count, void *buffer) {
-	if (!g_boot_drive.is_initialized) {
-		return false;
+void storage_register_ahci_drive(hba_port_t *port){
+	char *name = kzalloc(4);
+	sprintf(name, "sd%c\0", next_drv_letter++);
+
+	blkdev_ops_t *ops = kzalloc(sizeof(blkdev_ops_t));
+	ops->read_blocks = ahci_read_blocks;
+	ops->write_blocks = ahci_write_blocks;
+	ops->stat = ahci_get_drv_stat;
+	
+	block_device_t *blkdev = new_block_dev(name, ops);
+	//blkdev->block_size = ahci_get_sector_count(port);
+	blkdev->total_bg = 0;
+	blkdev->priv_data = port;
+
+	if (!selected_blkdev){
+		selected_blkdev = blkdev;
 	}
-
-	uint32_t startl = (uint32_t)(lba & 0xFFFFFFFF);
-	uint32_t starth = (uint32_t)((lba >> 32) & 0xFFFFFFFF);
-
-	return ahci_read(g_boot_drive.port, startl, starth, count, (uint16_t *)buffer);
 }
 
-bool storage_write_sectors(uint64_t lba, uint32_t count, const void *buffer) {
-	if (!g_boot_drive.is_initialized) {
-		return false;
-	}
-	uint32_t startl = (uint32_t)(lba & 0xFFFFFFFF);
-	uint32_t starth = (uint32_t)((lba >> 32) & 0xFFFFFFFF);
-	return ahci_write(g_boot_drive.port, startl, starth, count, (uint16_t *)buffer);
-}
-
-void storage_register_drive(hba_port_t *port){
-	g_boot_drive.port = port;
-	g_boot_drive.is_initialized = true;
-}
-
-void storage_get_sect_count() {
-	if (g_boot_drive.is_initialized)
-		g_boot_drive.nb_sect = ahci_get_sector_count(g_boot_drive.port);
-}

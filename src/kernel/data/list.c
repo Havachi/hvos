@@ -40,7 +40,7 @@ list_node_t *list_get_node_at(list_t *list, unsigned long at) {
 
 //Add node at the end
 void list_append(list_t *list, void *data) {
-	list_node_t *node = NULL;
+	list_node_t *node = new_node(data, NULL);
 	if (!node)
 		return;
 	if (list->count) {

@@ -33,14 +33,14 @@ void pmm_init(struct limine_memmap_response* memmap) {
 		struct limine_memmap_entry *entry = memmap->entries[i];
 		if (entry->type == LIMINE_MEMMAP_USABLE && entry->length >= bitmap_size) {
 			bitmap_phys_addr = entry->base;
-			bitmap = (uint8_t *)(bitmap_phys_addr + hhdm_offset);
+			map = (uint8_t *)(bitmap_phys_addr + hhdm_offset);
 			break;
 		}
 	}
 	if (bitmap_phys_addr == 0){
 		for (;;) { __asm__ __volatile("hlt"); }
 	}
-	memset(bitmap, 0xFF, bitmap_size);
+	memset(map, 0xFF, bitmap_size);
 
 	for (uint64_t i = 0; i < memmap->entry_count; i++) {
 		struct limine_memmap_entry* entry = memmap->entries[i];

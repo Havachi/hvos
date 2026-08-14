@@ -15,6 +15,9 @@ uint64_t ahci_mem_addr = 0x0;
 hba_mem_t *ahci_mem = NULL;
 uint64_t ahci_cmd_slot = 0;
 
+hba_port_t *cached_identify_port = NULL;
+uint16_t *cached_identify_buffer = NULL;
+
 extern void storage_get_sect_count();
 
 void find_ahci_controller(){
@@ -157,9 +160,11 @@ static bool ahci_io_sectors(hba_port_t *port, uint32_t startl, uint32_t starth, 
 
 	cmd_header->cfl = sizeof(fis_reg_h2d_t)/(sizeof(uint32_t));
 	cmd_header->w = is_write ? 1 : 0;
+	/*
 	if (is_write) {
 		ahci_bswap_buffer((uint16_t *)buffer, count);
 	}
+	*/
 	uint32_t sectors_per_prdt = 128;
 	uint32_t bytes_per_prdt = sectors_per_prdt * SECTOR_SIZE;
 	uint16_t prdt_entries = (uint16_t)((count + sectors_per_prdt - 1) / sectors_per_prdt);
@@ -239,11 +244,11 @@ static bool ahci_io_sectors(hba_port_t *port, uint32_t startl, uint32_t starth, 
 			printf("[AHCI] Read Disk Error\n");
 			return false;
 	}
-
+	/*
 	if (!is_write) {
 		ahci_bswap_buffer((uint16_t *) buffer, count);
 	}
-
+	*/
 	return true;
 }
 
@@ -266,7 +271,7 @@ void ahci_probe_port() {
 		
 			switch (dt) {
 				case AHCI_DEV_SATA:
-					storage_register_drive(&mem->ports[i]);
+					storage_register_ahci_drive(&mem->ports[i]);
 					printf("[AHCI] SATA drive found at port %d\n", i);
 					break;
 				case AHCI_DEV_SATAPI:
@@ -294,34 +299,99 @@ void init_ahci(){
 	ahci_mem = (hba_mem_t *)ahci_mem_addr;
 	ahci_port_rebase(&ahci_mem->ports[0], 0);
 	ahci_port_rebase(&ahci_mem->ports[1], 1);
-	storage_get_sect_count();
 }
 
 int ahci_read_blocks(block_device_t *dev, uint64_t lba, uint32_t count, void* buffer){
+	uint64_t sector_addr = CALC_LBA_DIRECT(lba, dev->block_size, SECTOR_SIZE);
+	uint64_t sector_count = (dev->block_size * count) / SECTOR_SIZE;
+	if (dev->priv_data == NULL){
+		return -1;
+	}
 	hba_port_t *port = (hba_port_t *)dev->priv_data;
-	return ahci_read(port, ((uint32_t)(lba & 0xFFFFFFFF)), ((uint32_t)((lba >> 32) & 0xFFFFFFFF)), count, (uint16_t *)buffer);
+	if (
+		ahci_read(port, ((uint32_t)(sector_addr & 0xFFFFFFFF)), ((uint32_t)((sector_addr >> 32) & 0xFFFFFFFF)), sector_count, (uint16_t *)buffer)
+	){return 0;}
+	return -1;
 }
 
 int ahci_write_blocks(block_device_t *dev, uint64_t lba, uint32_t count, const void* buffer){
+	uint64_t sector_addr = CALC_LBA_DIRECT(lba, dev->block_size, SECTOR_SIZE);
+	uint64_t sector_count = (dev->block_size * count) / SECTOR_SIZE;
 	hba_port_t *port = (hba_port_t *)dev->priv_data;
-	return ahci_write(port, ((uint32_t)(lba & 0xFFFFFFFF)), ((uint32_t)((lba >> 32) & 0xFFFFFFFF)), count, (uint16_t *)buffer);
+	if (
+		ahci_write(port, ((uint32_t)(sector_addr & 0xFFFFFFFF)), ((uint32_t)((sector_addr >> 32) & 0xFFFFFFFF)), sector_count, (uint16_t *)buffer)
+	) {
+		return 0;
+	} 
+	return -1;
 }
 
-uint64_t ahci_get_sector_count(hba_port_t *port) {
-	uint64_t buf_phys = (uint64_t)pmm_alloc();
-	map_page(kernel_pml4, PHYS_TO_VIRT(buf_phys), buf_phys, PTE_PRESENT | PTE_WRITABLE);
 
+static uint16_t *ahci_run_identify(hba_port_t *port) {
+	if (
+		cached_identify_buffer != NULL &&
+		memcmp(cached_identify_port, port, sizeof(hba_port_t)) == 0
+	){
+		return cached_identify_buffer;
+	}
+
+	uint64_t buf_phys = (uint64_t)pmm_alloc();
 	uint16_t *identify_buf = (uint16_t *)(PHYS_TO_VIRT(buf_phys));
 	if (!identify_buf) {
-		return 0;
+		return NULL;
 	}
 	bool success = ahci_io_sectors(port, 0, 0, 1, (void *)PHYS_TO_VIRT(buf_phys), false, ATA_CMD_IDENTIFY);
 	if (!success) {
 		printf("[AHCI] Failed to IDENTIFY disk\n");
 		kfree(identify_buf);
-		return 0;
+		return NULL;
 	}
+	cached_identify_buffer = identify_buf;
+	cached_identify_port = port;
+	return identify_buf;
+}
 
+static uint64_t ahci_get_phys_sector_size(hba_port_t *port) {
+	uint16_t *identify_buf = ahci_run_identify(port);
+	uint16_t w106 = identify_buf[106];
+	if ((w106 & 0xC000) != 0x4000){
+		return 512;
+	} else if ((w106 & 0xC000) == 0x4000) {
+		switch (w106 & 0x3000) {
+			case 0x0000:
+				return 512;
+			case 0x2000:
+				return (1 << (w106 & 0xF)) * 512;
+			case 0x3000:
+			case 0x1000:
+				return ((uint32_t)identify_buf[117] << 16 | (uint32_t)identify_buf[118]) * 2;
+		}
+	}
+	return 512;
+}
+
+static uint64_t ahci_get_logical_sector_size(hba_port_t *port) {
+	uint16_t *identify_buf = ahci_run_identify(port);
+	uint16_t w106 = identify_buf[106];
+	if ((w106 & 0xC000) != 0x4000){
+		return 512;
+	} else if ((w106 & 0xC000) == 0x4000) {
+		switch (w106 & 0x3000) {
+			case 0x0000:
+				return 512;
+			case 0x2000:
+				return 512;
+
+			case 0x3000:
+			case 0x1000:
+				return ((uint32_t)identify_buf[117] << 16 | (uint32_t)identify_buf[118]) * 2;
+		}
+	}
+	return 512;
+}
+
+uint64_t ahci_get_sector_count(hba_port_t *port) {
+	uint16_t *identify_buf = ahci_run_identify(port);
 	uint64_t total_sectors = 0;
 	if (identify_buf[83] & (1 << 10)){
 		total_sectors = ((uint64_t)identify_buf[103] << 48) | 
@@ -332,6 +402,20 @@ uint64_t ahci_get_sector_count(hba_port_t *port) {
 		total_sectors =	((uint64_t)identify_buf[61] << 16) |
 						((uint64_t)identify_buf[60]);
 	}
-	pmm_free((void *)buf_phys);	
 	return total_sectors;
 }
+
+int ahci_get_drv_stat(block_device_t *dev, void *buffer) {
+	hba_port_t *port = (hba_port_t *)dev->priv_data;
+	if (buffer == NULL)
+		return -1;
+	blkdev_stat_t *stat = buffer;
+	stat->total_nb_lsect = ahci_get_sector_count(port);
+	stat->physical_sector_size = ahci_get_phys_sector_size(port);
+	stat->logical_sector_size = ahci_get_logical_sector_size(port);
+	return true;
+}
+
+
+
+

@@ -54,7 +54,7 @@ extern pml4_table_t		*kernel_pml4;
 extern uint64_t 		total_pages;
 extern uint64_t 		used_pages;
 extern uint64_t 		bitmap_size;
-extern uint8_t			*bitmap;
+extern uint8_t			*map;
 extern heap_header_t	*heap_start;
 extern uint64_t			heap_current_limit;
 
@@ -83,6 +83,7 @@ void pmm_free(void* addr);
 /* memmap.c */
 void init_mem(struct limine_memmap_response* memmap);
 void map_page(pml4_table_t *pml4_virt, uint64_t vaddr, uint64_t paddr, uint64_t flags);
+void map_page_wr(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr);
 pml4_table_t *create_new_pml4(void);
 
 
@@ -90,4 +91,7 @@ bool is_valid_user_address(const void *addr, size_t size);
 
 kernel_memmap_t *init_kmemmap();
 void print_kmemmap(kernel_memmap_t *km);
+
+void *map_alloc_phys(size_t size);
+void unmap_alloc_phys(void *ptr, size_t size);
 #endif

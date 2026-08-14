@@ -85,6 +85,11 @@ static void analyse_mem() {
 	analyse_page_table(kernel_pml4, 4, 0);
 }
 
+static void init_kernel_entropy(void) {
+	extern void seed_prng(uint64_t seed);
+	uint64_t early_seed = read_tsc();
+	seed_prng(early_seed);
+}
 
 
 void kernel_initialize(void) {
@@ -112,5 +117,6 @@ void kernel_initialize(void) {
 	init_pci();
 	//smp_init();
 	//asm volatile("cli; hlt");
+	init_kernel_entropy();
 	printf("KERNEL INIT DONE!\n");
 }

@@ -4,13 +4,9 @@
 #include "include/asm/asm.h"
 #include "include/cpu/io.h"
 #include "include/kernel/acpi.h"
-#include "include/kernel/scheduler/mt.h"
-#include "include/kernel/scheduler/process.h"
-#include "include/kernel/scheduler/task.h"
-#include "include/kernel/scheduler/thread.h"
+#include "include/kernel/fs/block_dev.h"
 #include "include/mem/mem.h"
 #include "kernel/fs/ext2.h"
-#include "kernel/scheduler/task_state.h"
 #include "kernel/syscall.h"
 #include <stdint.h>
 #include <sys/wait.h>
@@ -70,8 +66,11 @@ void kmain(void) {
     printf("CPU with %d core\n", g_acpi_cpu_count);
     print_all_pci();
     init_ahci();
-    init_ext2();
+    //init_ext2();
     printf("%s\n", datetime_to_str(now()));
+    block_device_t *sda = fetch_from_list("sda");
+    mkfs_ext2(sda);
+
     printf("loading shell\n");
 	int pid = execute_elf("/init.elf");
     printf("[KERNEL] INIT PID %d\n", pid);

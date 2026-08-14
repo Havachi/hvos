@@ -13,7 +13,7 @@ uint64_t total_pages;
 uint64_t used_pages;
 
 uint64_t kernel_page_map;
-extern uint8_t *bitmap;
+extern uint8_t *map;
 uint64_t bitmap_size;
 
 uint64_t hhdm_offset;
@@ -47,11 +47,11 @@ static virtual_address_t *new_virt(uint64_t virt) {
 void memory_frame_set(uint64_t frame, uint64_t length) {
 	while (length > 0) {
 		if (frame % 8 == 0 && length >= 8) {
-			bitmap[frame / 8] = 0xFF;
+			map[frame / 8] = 0xFF;
 			frame += 8;
 			length -= 8;
 		} else {
-			bitmap[frame / 8] |= (1 << (7 - (frame % 8)));
+			map[frame / 8] |= (1 << (7 - (frame % 8)));
 			frame++;
 			length--;
 		}
@@ -77,19 +77,19 @@ void init_bitmap(struct limine_memmap_response *memmap) {
 	for (uint32_t i = 0; i < memmap->entry_count; i++) {
 		struct limine_memmap_entry *e = memmap->entries[i];
 		if (e->type == LIMINE_MEMMAP_USABLE && e->length >= bitmap_size){
-			bitmap = (uint8_t *)(PHYS_TO_VIRT(e->base));
+			map = (uint8_t *)(PHYS_TO_VIRT(e->base));
 			e->base += bitmap_size;
 			e->length -= bitmap_size;
 			break;
 		}
 	}
-	if (bitmap == NULL){
+	if (map == NULL){
 		printf("FAILED TO ALLOCATE BITMAP");
 		for (;;){
 			__asm__ __volatile("hlt");
 		}
 	}
-	memset(bitmap, 0xFF, bitmap_size);
+	memset(map, 0xFF, bitmap_size);
 	for (uint32_t i = 0; i < memmap->entry_count; i++) {
 		struct limine_memmap_entry *e = memmap->entries[i];
 		if (e->type == LIMINE_MEMMAP_USABLE){
@@ -110,6 +110,10 @@ uint64_t *alloc_page_table() {
 	uint64_t *virt_addr = (uint64_t *)PHYS_TO_VIRT(phys_addr);
 	memset(virt_addr, 0, PAGE_SIZE);
 	return (uint64_t *)phys_addr;
+}
+
+void map_page_wr(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr){
+	map_page(pml4_virt, virt_addr_raw, paddr, PTE_PRESENT | PTE_WRITABLE);
 }
 
 ///Map a Virtual address to a Physical Address
@@ -273,4 +277,27 @@ void print_kmemmap(kernel_memmap_t *km) {
 	printf("stack:\t\t%016p\t%016p\n", km->kstack_start, km->kstack_start - km->kstack_size);
 	printf("heap:\t\t%016p\t%016p\n", km->kheap_start, km->kheap_start + km->kheap_size);
 	printf("user stack:\t%016p\t%016p\n", km->ustack_start, km->ustack_start - km->ustack_size);
+}
+
+
+void *map_alloc_phys(size_t size) {
+	uint32_t nb_pg = (size / PAGE_SIZE) + 1;
+	void *raw = pmm_alloc_n(nb_pg);
+	map_page(kernel_pml4, PHYS_TO_VIRT(raw), (uint64_t)raw, PTE_PRESENT | PTE_WRITABLE);
+	return (void *)PHYS_TO_VIRT(raw);
+}
+
+void unmap_alloc_phys(void *ptr, size_t size) {
+	if (ptr == NULL || size == 0) {
+		return;
+	}
+
+	uint32_t nb_pg = (size / PAGE_SIZE) + 1;
+	if (nb_pg > 1) {
+		for (uint32_t i = 0; i < nb_pg; i++) {
+			pmm_free((void *)VIRT_TO_PHYS(ptr + (PAGE_SIZE * i)));
+		}		
+	} else {
+		pmm_free((void *)VIRT_TO_PHYS(ptr));
+	}
 }

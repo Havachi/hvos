@@ -1,5 +1,6 @@
 #ifndef HVOS_DRIVERS_AHCI_H
 #define HVOS_DRIVERS_AHCI_H
+#include "kernel/fs/block_dev.h"
 #include "kernel/sync.h"
 #include <stdint.h>
 /*Advanced Host Controller Interface*/
@@ -260,7 +261,10 @@ typedef struct {
 void init_ahci();
 bool ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buf);
 bool ahci_write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buffer);
-extern void storage_register_drive(hba_port_t *port);
+int ahci_read_blocks(block_device_t *dev, uint64_t lba, uint32_t count, void* buffer);
+int ahci_write_blocks(block_device_t *dev, uint64_t lba, uint32_t count, const void* buffer);
+int ahci_get_drv_stat(block_device_t *dev, void *buffer);
+extern void storage_register_ahci_drive(hba_port_t *port);
 uint64_t ahci_get_sector_count(hba_port_t *port);
 
 #endif

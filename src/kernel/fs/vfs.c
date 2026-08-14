@@ -25,7 +25,7 @@ static const char *next_path_token(const char *path, char *token) {
 }
 
 
-inode_t *alloc_inode(void) {
+inode_t *vfs_alloc_inode(void) {
 	inode_t *node = (inode_t *)kmalloc(sizeof(inode_t));
 	if (!node) return NULL;
 
@@ -40,11 +40,11 @@ inode_t *alloc_inode(void) {
 	return node;
 }
 
-void free_inode(inode_t *inode) {
+void vfs_free_inode(inode_t *inode) {
 	kfree(inode);
 }
 
-dentry_t *alloc_dentry(const char *name, inode_t *inode, dentry_t *parent) {
+dentry_t *vfs_alloc_dentry(const char *name, inode_t *inode, dentry_t *parent) {
 	dentry_t *entry = (dentry_t *)kmalloc(sizeof(dentry_t));
 	if (!entry) return NULL;
 
@@ -58,7 +58,7 @@ dentry_t *alloc_dentry(const char *name, inode_t *inode, dentry_t *parent) {
 	return entry;
 }
 
-void free_dentry(dentry_t *dentry) {
+void vfs_free_dentry(dentry_t *dentry) {
 	kfree(dentry);
 }
 
@@ -129,13 +129,13 @@ dentry_t *vfs_lookup(const char *path) {
 			return NULL;
 		}
 
-		dentry_t *search_dentry = alloc_dentry(token, NULL, current);
+		dentry_t *search_dentry = vfs_alloc_dentry(token, NULL, current);
 		if (!search_dentry) return NULL;
 		dentry_t *found = current->d_inode->i_op->lookup(current->d_inode, search_dentry);
 
 		if (!found || !found->d_inode) {
 			if (search_dentry && (!found || found != search_dentry)) {
-				free_dentry(search_dentry);
+				vfs_free_dentry(search_dentry);
 			}
 			return NULL;
 		}
@@ -205,7 +205,7 @@ int vfs_create(const char *path, mode_t mode) {
 		return -4;
 	}
 
-	dentry_t *new_file = alloc_dentry(file_name, NULL, parent);
+	dentry_t *new_file = vfs_alloc_dentry(file_name, NULL, parent);
 	if (!new_file)
 		return -5;
 
@@ -233,7 +233,7 @@ int vfs_mkdir(const char *path, mode_t mode) {
         return -4;
     }
 
-    dentry_t *search_template = alloc_dentry(new_dir_name, NULL, parent_dentry);
+    dentry_t *search_template = vfs_alloc_dentry(new_dir_name, NULL, parent_dentry);
     if (!search_template) {
         return -5;
     }
@@ -243,7 +243,7 @@ int vfs_mkdir(const char *path, mode_t mode) {
         return -6;
     }
 
-    dentry_t *new_dir_dentry = alloc_dentry(new_dir_name, NULL, parent_dentry);
+    dentry_t *new_dir_dentry = vfs_alloc_dentry(new_dir_name, NULL, parent_dentry);
     if (!new_dir_dentry) {
         return -5;
     }
@@ -251,7 +251,7 @@ int vfs_mkdir(const char *path, mode_t mode) {
     int result = parent_dentry->d_inode->i_op->mkdir(parent_dentry->d_inode, new_dir_dentry, mode);
 
     if (result < 0) {
-        free_dentry(new_dir_dentry);
+        vfs_free_dentry(new_dir_dentry);
     }
 
     return result;

@@ -1,10 +1,44 @@
 #ifndef _HVOS_KERNEL_FS_EXT2_H
 #define _HVOS_KERNEL_FS_EXT2_H
 
+#include "data_structure/bitmap.h"
+#include "kernel/fs/block_dev.h"
 #include <stdint.h>
 #include <sys/cdefs.h>
+#include "data_structure/uuid.h"
+#include "mem/mem.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 
 #define EXT2_SIGNATURE 0xEF53
+#define BLOCK_PER_GROUP 8192
+#define INODE_PER_GROUP 2048
+#define LOG_BLOCK_SIZE 0
+#define EXT2_NAME_LEN 255
+#define EXT2_RESERVED_INODES 10
+
+#define C_BLKSZ(s_log_block_size) (1024 << s_log_block_size)
+
+#define EXT2_INO_TO_GROUP(ino, ino_per_grp) \
+	(((ino) - 1) / (ino_per_grp))
+
+#define EXT2_INO_TO_BIT_IDX(ino, ino_per_grp) \
+	(((ino) - 1) % (ino_per_grp))
+
+//Dirs helper macros
+#define EXT2_DIR_REC_LEN(name_len)	(((8 + (name_len) + 3) >> 2) << 2)
+#define EXT2_FT_DIR					2
+
+//Reserved Inodes
+#define EXT2_BAD_INO 1
+#define EXT2_ROOT_INO 2
+#define EXT2_ACL_IDX_INO 3
+#define EXT2_ACL_DATA_INO 4
+#define EXT2_BOOT_LOADER_INO 5
+#define EXT2_UNDEL_DIR_INO 6
 
 //Return 1 if the version of ext2 is high enough for the sb to have extended fields
 #define ISSBEXT(sb) (sb->base.v_major >= 1) ? 1 : 0;
@@ -12,100 +46,112 @@
 //Ext2 superblock fields
 typedef struct {
 	//Total number of inodes in file system
-	uint32_t total_ine;
+	uint32_t s_inodes_count;
 	//Total number of blocks in file system
-	uint32_t total_blk;
+	uint32_t s_blocks_count;
 	//Number of blocks reserved for superuser 
-	uint32_t nb_rsv_blk;
+	uint32_t s_r_blocks_count;
 	//Total number of unallocated blocks
-	uint32_t total_un_blk;
+	uint32_t s_free_blocks_count;
 	//Total number of unallocated inode
-	uint32_t total_un_ine;
+	uint32_t s_free_inode_count;
 	//Block number of the block containing the superblock
-	uint32_t blk_sb;
+	uint32_t s_first_data_block;
 	//log2(block size) - 10
-	uint32_t log2_blk_sz;
+	uint32_t s_log_block_size;
 	//log2(fragment size) - 10
-	uint32_t log2_frg_sz;
+	uint32_t s_log_frag_size;
 	//Number of blocks in each block group
-	uint32_t nb_blk_grp;
+	uint32_t s_blocks_per_group;
 	//Number of fragment in each block group
-	uint32_t nb_frg_grp;
+	uint32_t s_frags_per_group;
 	//Number of inodes in each block group
-	uint32_t nb_ine_grp;
+	uint32_t s_ine_per_group;
 	//Last mount time
-	uint32_t mnt_time;
+	uint32_t s_mtime;
 	//Last write time
-	uint32_t wr_time;
+	uint32_t s_wtime;
 	//Number of time the volume has been mounted since its last consistency check
-	uint16_t nb_mnt_chk;
+	uint16_t s_mnt_count;
 	//Number of mounts allowed before a consistency check must be done
-	uint16_t nb_mnt_a_chk;
+	uint16_t s_max_mnt_count;
 	//Ext2 signature (0xef53)
-	uint16_t magic;
+	uint16_t s_magic;
 	//File system state
-	uint16_t fs_state;
+	uint16_t s_state;
 	//What to do when an error is detected
-	uint16_t err_hndl;
+	uint16_t s_errors;
 	//Minor portion of version
-	uint16_t v_min;
+	uint16_t s_minor_rev_level;
 	//time of last consistency check
-	uint32_t chk_time;
+	uint32_t s_lastcheck;
 	//Interval between forced consistency checks;
-	uint32_t itr_chk;
+	uint32_t s_checkinterval;
 	//Operating system ID
-	uint32_t os_id;
+	uint32_t s_creator_os;
 	//Major portion of version
-	uint32_t v_major;
+	uint32_t s_rev_level;
 	//User ID that can use reserved blocks
-	uint16_t uid;
+	uint16_t s_def_resuid;
 	//Group ID that can use reserved blocks
-	uint16_t gid;
+	uint16_t s_def_resgid;
 } __packed ext2_base_sb_t;
 
 //Ext2 extended superblock fields
 typedef struct {
+	/*-- EXT2_DYNAMIC_REV Specific--*/
 	//First non-reserved inode in filesystem
-	uint32_t fnri;
+	uint32_t s_first_ino;
 	//Size of each inode structure in bytes
-	uint16_t sz_ine;
+	uint16_t s_inode_size;
 	//Block group that this superblock is part of (if backup copy)
-	uint16_t sb_blk_grp;
+	uint16_t s_block_group_nr;
 	//Optional features present
-	uint32_t opt_feat;
+	uint32_t s_feature_compat;
 	//Required features present
-	uint32_t req_feat;
+	uint32_t s_freature_incompat;
 	//Features that if no supported, the volume must be mounted read-only
-	uint32_t ro_feat;
+	uint32_t s_feature_ro_compat;
 	//File system ID
-	char fsid[16];
+	uint8_t uuid[16];
 	//Volume name (C-String, null terminated)
-	char vol_name[16];
+	uint8_t s_volume_name[16];
 	//Path volume was last mounted to (C-String, null terminated)
-	char vol_path[64];
+	uint8_t s_last_mounted[64];
 	//Compression algorithm used
-	uint32_t compr_alg;
+	uint32_t s_algo_bitmap;
+
+	/*-- Performence Hints --*/
 	//Number of block to preallocate for files
-	char nb_blk_pre_alloc_file;
+	uint8_t s_prealloc_blocks;
 	//Number of block to preallocate for directories
-	char nb_blk_pre_alloc_dir;
-	//Unused
+	uint8_t s_prealloc_dir_blocks;
+	//Unused (alignment)
 	uint16_t _unused1;
+	
+	/*-- Journaling support --*/
 	//Journal ID (same style as the file system ID above)
-	char journal_id[16];
+	uint8_t s_journal_uuid[16];
 	//Journal inode
-	uint32_t jrnl_ine;
+	uint32_t s_journal_inum;
 	//Journal device
-	uint32_t jrnl_dev;
+	uint32_t s_jorunal_dev;
 	//Head of orphan inode list
-	uint32_t head_orph_ine;
+	uint32_t s_last_orphan;
+
+	/*-- Directory Indexing support --*/
+	uint32_t	s_hash_seed[4];
+	uint8_t		s_def_hash_version;
+	uint8_t		_unused2[3];
+	/*-- Other options --*/
+	uint32_t	s_default_mount_option;
+	uint32_t	s_first_meta_log;
 }__packed ext2_ext_sb_t;
 
 
 typedef struct {
 	ext2_base_sb_t base;
 	ext2_ext_sb_t ext;
-	uint32_t padding;
 } __packed __aligned(1024) ext2_sb_t;
 
 
@@ -113,83 +159,74 @@ typedef struct {
 typedef struct {
 
 	//Block address of block usage bitmap
-	uint32_t addr_blk_usage_bm;
+	uint32_t bg_block_bitmap;
 	//Block address of inode usage bitmap
-	uint32_t addr_ine_usage_bm;
+	uint32_t bg_inode_bitmap;
 	//Starting block address of inode table
-	uint32_t addr_ine_tbl;
+	uint32_t bg_inode_table;
 	//Number of unallocated blocks in group
-	uint16_t nb_unalloc_blk;
+	uint16_t bg_free_blocks_count;
 	//Number of unallocated inodes in group
-	uint16_t nb_unalloc_ine;
+	uint16_t bg_free_inodes_count;
 	//Number of directories in group
-	uint16_t nb_dir;
-
+	uint16_t bg_used_dirs_count;
+	//padding
+	uint16_t bg_pad;
+	uint8_t bg_reserved[12];
 } __packed ext2_bgd_t;
+
+typedef struct {
+	block_device_t 	*dev;
+	ext2_sb_t		*sb;
+	ext2_bgd_t		*bgd;
+} ext2_fs_t;
 
 //Ext2 inode
 typedef struct {
 	//Type and permissions
-	uint16_t type_perm;
+	uint16_t i_mode;
 	//User ID
-	uint16_t uid;
+	uint16_t i_uid;
 	//Lower 32 bits of size in bytes 
-	uint32_t sz_lo;
+	uint32_t i_size;
 	//Last access time
-	uint32_t a_time;
+	uint32_t i_atime;
 	//Creation time
-	uint32_t c_time;
+	uint32_t i_ctime;
+	uint32_t i_mtime;
 	//Deletion time
-	uint32_t d_time;
+	uint32_t i_dtime;
 	//Group ID;
-	uint16_t gid;
+	uint16_t i_gid;
 	//Count of hard links (directory entries) to this inode. When this reaches 0, the data blocks are marked as unallocated
-	uint16_t hlnk_cnt;
+	uint16_t i_links_count;
 	//Count of disk sectors in use by this inode, not counting the actual inode strucutre nor directory entries linking to the inode.
-	uint32_t sect_cnt;
+	uint32_t i_blocks;
 	//Flags
-	uint32_t flags;
+	uint32_t i_flags;
 	//Operating system specific value #1, can safely be 0
-	uint32_t os_v_1;
-	//Direct block pointer 0-11
-	uint32_t dbp[12];
-	//Singly Indirect Block Pointer (Points to a block that is a list of block pointers to data)
-	uint32_t sibp;
-	//Doubly Indirect Block Pointer (Points to a block that is a list of block pointers to Singly Indirect Blocks)
-	uint32_t dibp;
-	//Triply Indirect Block Pointer (Points to a block that is a list of block pointers to Doubly Indirect Blocks)
-	uint32_t tibp;
-	//Generation number (Primarily used for NFS)
-	uint32_t gen_num;
+	uint32_t i_osd1;
+	uint32_t i_block[15];
+	uint32_t i_generation;
 	//File ACL
-	uint32_t f_acl;
-	union {
-		//higher 32 bits of size in bytes (if feature bit set)
-		uint32_t sz_hi;
-		//Directory ACL if it's a directory
-		uint32_t d_acl
-	};
+	uint32_t i_file_acl;
+	uint32_t i_dir_acl;
 	//Block address of fragment
-	uint32_t blk_addr_frg;
+	uint32_t i_faddr;
 	//Operating System specific value #2
-	char os_v_2[12];
+	char i_osd2[12];
 } __packed ext2_ine_t;
 
 typedef struct {
 	//Inode
-	uint32_t	ine;
+	uint32_t		inode;
 	//Total size of this entry
-	uint16_t	size;
+	uint16_t		rec_len;
 	//Name length least-significant 8 bits
-	uint8_t		name_sz_lo;
-	union {
-		//Only if feature bit for "directory entries have file type byte" is set
-		uint8_t		type;
-		//Most significant 8bits of the Name Length
-		uint8_t		name_sz_hi;
-	};
+	uint8_t			name_len;
+	uint8_t			file_type;
 	//Name characters
-	char *		name;
+	char			name[];
 } __packed ext2_dir_t;
 
 enum {
@@ -330,12 +367,43 @@ enum {
 };
 
 
+
+
+
+
+/*bgdt.c*/
+int mkfs_ext2_bgdt_init(block_device_t *dev, ext2_sb_t *sb);
+ext2_bgd_t *ext2_read_bgdt_entry(block_device_t *dev, ext2_sb_t *sb, uint32_t bg_id);
+int ext2_write_bgdt_entry(block_device_t *dev, ext2_sb_t *sb, uint32_t bg_id, ext2_bgd_t *entry);
+
+/*dir.c*/
+ext2_dir_t *ext2_get_dir(block_device_t *dev, ext2_sb_t *sb, ino_t inode_number, char *name);
+
+/*ext2.c*/
+int blkgrp_has_super(uint32_t group);
+uint32_t mkfs_ext2(block_device_t *blkdev);
+bitmap_t *ext2_read_bitmap(block_device_t *dev, uint32_t loc, uint32_t total_bits);
+uint32_t ext2_write_bitmap(block_device_t *dev, uint32_t loc, uint32_t total_bits, bitmap_t *map);
+
+/*ino.c*/
+ext2_ine_t *ext2_get_inode_table(block_device_t *dev, ext2_sb_t *sb, ext2_bgd_t *bgd);
+ext2_ine_t *ext2_read_inode(block_device_t *dev, ext2_sb_t *sb, ino_t inode_id);
+int  ext2_write_inode(block_device_t *dev, ext2_sb_t *sb, ino_t inode_id, ext2_ine_t *inode);
+
 /*sb.c*/
-ext2_sb_t *alloc_sb();
-ext2_sb_t *phys_alloc_sb();
-ext2_sb_t *new_sb();
-ext2_sb_t *init_sb(ext2_sb_t *sb);
-ext2_sb_t *read_sb();
-void write_sb(ext2_sb_t *sb);
-void init_ext2();
+ext2_sb_t *ext2_read_sb(block_device_t *dev);
+int ext2_write_sb(block_device_t *dev, const ext2_sb_t *sb);
+int ext2_write_backup_sb(block_device_t *dev, const ext2_sb_t *sb);
+int ext2_update_sb(block_device_t *dev, const ext2_sb_t *sb);
+
+/*VFS API*/
+
+//Return codes
+#define OPERATION_SUCCESS 0
+#define OPERATION_FAILED 1
+#define IO_ERROR 5
+#define DEVICE_WRITE_ERROR 6
+#define DEVICE_NEED_REFORMAT 7
+#define DEVICE_UNAVAILABLE 8
+
 #endif

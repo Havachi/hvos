@@ -15,7 +15,7 @@ static dentry_t * ramfs_lookup(inode_t *dir, dentry_t *dentry) {
 	for (size_t i = 0; i < dir_data->child_count; i++) {
 		dentry_t *child = dir_data->children[i];
 		if (strcmp(child->d_name, dentry->d_name) == 0) {
-			free_dentry(dentry);
+			vfs_free_dentry(dentry);
 			return child;
 		}
 	}
@@ -24,7 +24,7 @@ static dentry_t * ramfs_lookup(inode_t *dir, dentry_t *dentry) {
 
 
 static inode_t *ramfs_create_inode(mode_t mode) {
-	inode_t *ino = alloc_inode();
+	inode_t *ino = vfs_alloc_inode();
 	if (!ino) return NULL;
 	static uint32_t next_ino_num = 100;
 	ino->i_ino = next_ino_num++;
@@ -128,7 +128,7 @@ void ramfs_init() {
 	memset(ddata, 0, sizeof(ramfs_dir_data_t));
 	root_inode->i_private = ddata;
 
-	root_dentry = alloc_dentry("/", root_inode, NULL);
+	root_dentry = vfs_alloc_dentry("/", root_inode, NULL);
 }
 
 

@@ -115,18 +115,25 @@ typedef struct file_s {
 	int			f_flags;
 } file_t;
 
+struct super_block {
+
+};
+
 extern dentry_t *root_dentry;
 
 extern volatile struct limine_module_request module_request;
 
+typedef struct vfs_fs_ops {
+	int (*mount)()
+} vfs_fs_ops_t;
 
 
 void vfs_init(void);
 
-inode_t *alloc_inode(void);
-void free_inode (inode_t *inode);
-dentry_t *alloc_dentry(const char *name, inode_t *inode, dentry_t *parent);
-void free_dentry (dentry_t *inode);
+inode_t *vfs_alloc_inode(void);
+void vfs_free_inode (inode_t *inode);
+dentry_t *vfs_alloc_dentry(const char *name, inode_t *inode, dentry_t *parent);
+void vfs_free_dentry (dentry_t *inode);
 dentry_t *vfs_lookup(const char *path);
 file_t *vfs_open(const char *path, int flags);
 ssize_t vfs_read(file_t* filp, char *buffer, size_t size);

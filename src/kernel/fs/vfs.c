@@ -151,7 +151,7 @@ bool vfs_split_path(const char *path, char *out_dir, size_t dir_max, char *out_f
 
 	if (path == last_slash && *(last_slash + 1) == '\0') {
 		if (dir_max < 2 || file_max < 1) return false;
-		strcpy(out_dir, "/");
+		strncpy(out_dir, "/", 1);
 		out_filename[0] = '\0';
 		return true;
 	}
@@ -174,7 +174,7 @@ bool vfs_split_path(const char *path, char *out_dir, size_t dir_max, char *out_f
 	}
 
 	if (last_slash == path) {
-		strcpy(out_dir, "/");
+		strncpy(out_dir, "/", 1);
 	} else {
 		strncpy(out_dir, path, dir_len);
 		out_dir[dir_len] = '\0';

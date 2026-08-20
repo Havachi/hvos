@@ -68,15 +68,17 @@ switch_to:
 
 kernel_yield:
 	cli
+	; Build an IRET frame. Saved RSP must be the value *after* a normal RET
+	; (entry RSP + 8). Using entry RSP leaks 8 bytes per yield and overflows
+	; the idle stack in a few seconds.
 	mov rax, ss
 	push rax
-	mov rax, rsp
-	add rax, 8
+	lea rax, [rsp + 16]
 	push rax
 	pushfq
 	mov rax, cs
 	push rax
-	mov rax,[rsp + 32]
+	mov rax, [rsp + 32]
 	push rax
 
 	push r15
@@ -96,6 +98,7 @@ kernel_yield:
 	push rax
 
 	mov rdi, rsp
+	xor esi, esi
 	call schedule
 	mov rsp, rax
 

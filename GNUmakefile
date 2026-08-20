@@ -216,7 +216,7 @@ runint: $(ISOOUT) installbios $(DRIVE_FILE)
 	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 1G -monitor stdio -d int -no-reboot -no-shutdown $(QEMU_DRIVE_FLAGS)
 
 run: $(ISOOUT) installbios $(DRIVE_FILE)
-	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 2G -monitor stdio -smp 4 $(QEMU_DRIVE_FLAGS)
+	@qemu-system-x86_64 -machine pc,accel=tcg,smm=off -m 3G -monitor stdio -smp 4 $(QEMU_DRIVE_FLAGS)
 
 
 

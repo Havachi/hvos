@@ -104,15 +104,10 @@ process_t *create_elf_process(uint8_t *elf_buffer) {
 	}
 	
 
-	int nb_stack_page  = 4;
-	for (int i = 0; i < num_stack_pages; i++) {
-		uint64_t k_page = (uint64_t)pmm_alloc();
-		if (!k_page) return NULL;
-		if (i == (nb_stack_page - 1)) {
-			kernel_stack_top = (uint64_t)PHYS_TO_VIRT(k_page) + PAGE_SIZE;
-		}
-		
-	}
+	void *kstack = kmalloc(KERNEL_STACK_SIZE);
+	if (!kstack)
+		return NULL;
+	kernel_stack_top = (uint64_t)kstack + KERNEL_STACK_SIZE;
 	proc = new_elf_process(entry_point, USR_STACK_BASE, kernel_stack_top);
 	proc->cr3 = pml4_phys;
 	proc->heap_end = USR_HEAP_BASE;

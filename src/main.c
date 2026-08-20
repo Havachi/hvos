@@ -69,8 +69,14 @@ void kmain(void) {
     //init_ext2();
     printf("%s\n", datetime_to_str(now()));
     block_device_t *sda = fetch_from_list("sda");
-    mkfs_ext2(sda);
-
+    sda->block_size = BLOCK_SIZE_DEFAULT;
+    
+    ext2_fs_t *fs = NULL;
+    int err = mkfs_ext2(sda);
+    if (err < 0) {
+        printf("Failed to format drive %s: (%d)\n", sda->name, -err);
+    }
+    
     printf("loading shell\n");
 	int pid = execute_elf("/init.elf");
     printf("[KERNEL] INIT PID %d\n", pid);

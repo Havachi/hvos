@@ -48,10 +48,15 @@ static int	test_bitmap(bitmap_t *map, size_t idx) {
 
 static int next_free_bitmap(bitmap_t *map) {
 	uint32_t i = 0;
-	while (test_bitmap(map, i) != 0){
-		i++;
+	int result = -1;
+
+	for (uint32_t i = 0; i < map->nb_bits; i++) {
+		if (test_bitmap(map, i) == 0) {
+			result = i;
+			break;
+		}
 	}
-	return i;
+	return result;
 }
 
 #endif

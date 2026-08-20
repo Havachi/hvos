@@ -9,6 +9,12 @@
 #define PAGE_ALIGN(addr) ((((uint64_t)(addr)) + PAGE_MASK) & ~(PAGE_MASK))
 #define ALIGN_BOUND(value, bound) (((value) + ((bound) - 1)) & ~((bound) - 1))
 
+#define PAGE_ALIGN_DOWN(addr)	((addr) & ~(PAGE_SIZE - 1))
+#define PAGE_ALIGN_UP(addr) 	(((addr) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
+#define ALIGN_DOWN_BOUND(addr, align)		((addr) & ~((align) - 1))
+#define ALIGN_UP_BOUND(addr, align)			(((addr) + (align) - 1) & ~((align) -1))
+
+
 #define ENTRIES_PER_TABLE 512
 
 typedef struct {

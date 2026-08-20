@@ -44,7 +44,7 @@ void init_bsp_main_process() {
 	bsp_idle_thread->state = STATE_READY;
 	bsp_idle_thread->vruntime = 0;
 	bsp_idle_thread->next = NULL;
-	sprintf(bsp_idle_thread->name, "IDLE_THREAD");
+	sprintf(bsp_idle_thread->name, "IDLE_THREAD\0");
 	bsp_idle_thread->process = bsp_main_process;
 	
 	list_push(bsp_task_list->process_list, (void *)bsp_main_process);
@@ -59,20 +59,18 @@ void init_bsp_main_process() {
 
 void init_multitasking(){
 	uint32_t cpu_count = g_acpi_cpu_count;
-	cpu_task_lists = (cpu_task_list_t **)kmalloc(sizeof(cpu_task_list_t) * cpu_count);
+	cpu_task_lists = (cpu_task_list_t **)kzalloc(sizeof(cpu_task_list_t *) * cpu_count);
 
 	for (uint32_t i = 0; i < cpu_count; i++) {
-		cpu_task_lists[i] = kmalloc(sizeof(cpu_task_list_t));
+		cpu_task_lists[i] = kzalloc(sizeof(cpu_task_list_t));
 		cpu_task_lists[i]->process_list = init_list();
 		cpu_task_lists[i]->thread_list = init_list();
+		cpu_task_lists[i]->sleeping_queue = init_list();
 		cpu_task_lists[i]->current_thread = NULL;
 	}
 	cpu_task_list_t *bsp_task_list = get_cpu_task_list();
-	//Setup BSP tasklist
 	bsp_task_list->min_vruntime = 10;
 	bsp_task_list->thread_count = 0;
-
-	bsp_task_list->sleeping_queue = init_list();
 	init_bsp_main_process();
 	//bsp_task_list->idle_task = new_idle_task();
 }

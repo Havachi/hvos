@@ -1,6 +1,7 @@
 #include "mem/mem.h"
 #include "kernel/boot.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "limine.h"
 #include "mem/lowmem.h"
@@ -39,158 +40,142 @@ static void set_cr3(uint64_t cr3) {
     __asm__ __volatile("movq %0, %%cr3"::"r"(cr3));
 }
 
-static virtual_address_t *new_virt(uint64_t virt) {
-	virtual_address_t *virtaddr = (virtual_address_t *)virt;
-	return virtaddr;
-}
-
-void memory_frame_set(uint64_t frame, uint64_t length) {
-	while (length > 0) {
-		if (frame % 8 == 0 && length >= 8) {
-			map[frame / 8] = 0xFF;
-			frame += 8;
-			length -= 8;
-		} else {
-			map[frame / 8] |= (1 << (7 - (frame % 8)));
-			frame++;
-			length--;
-		}
-	}
-}
-
 static uint64_t get_highest_phys_addr(struct limine_memmap_response *memmap) {
-	uint64_t max_addr = 0;
-	for (uint32_t i = 0; i < memmap->entry_count; i++) {
-		struct limine_memmap_entry *e = memmap->entries[i];
-		if (e->type == LIMINE_MEMMAP_RESERVED) continue;
-		if (e->base + e->length > max_addr)
-			max_addr = e->base + e->length;
-	}
-	return max_addr;
+    uint64_t max_addr = 0;
+    for (uint32_t i = 0; i < memmap->entry_count; i++) {
+        struct limine_memmap_entry *e = memmap->entries[i];
+        if (e->type == LIMINE_MEMMAP_BAD_MEMORY) continue;
+		uint64_t top = e->base + e->length;
+		if (top > max_addr) max_addr = top;
+    }
+    return max_addr;
 }
 
 void init_bitmap(struct limine_memmap_response *memmap) {
-	uint64_t max_addr = get_highest_phys_addr(memmap);
-	uint64_t pages = 0;
-	bitmap_size = (max_addr / PAGE_SIZE) / 8;
+    uint64_t max_addr = get_highest_phys_addr(memmap);
+    total_pages = max_addr / PAGE_SIZE;
+    bitmap_size = PAGE_ALIGN_UP((total_pages + 7) / 8);
 
-	for (uint32_t i = 0; i < memmap->entry_count; i++) {
-		struct limine_memmap_entry *e = memmap->entries[i];
-		if (e->type == LIMINE_MEMMAP_USABLE && e->length >= bitmap_size){
-			map = (uint8_t *)(PHYS_TO_VIRT(e->base));
-			e->base += bitmap_size;
-			e->length -= bitmap_size;
-			break;
-		}
-	}
-	if (map == NULL){
-		printf("FAILED TO ALLOCATE BITMAP");
-		for (;;){
-			__asm__ __volatile("hlt");
-		}
-	}
-	memset(map, 0xFF, bitmap_size);
-	for (uint32_t i = 0; i < memmap->entry_count; i++) {
-		struct limine_memmap_entry *e = memmap->entries[i];
-		if (e->type == LIMINE_MEMMAP_USABLE){
-			for (uint64_t addr = 0; addr < e->length; addr += PAGE_SIZE){
-				bitmap_clear((e->base + addr) / PAGE_SIZE);
-				pages++;
-			}
-		}
-	}
-	total_pages = pages;
+    uint64_t bitmap_phys = 0;
+
+    // 1. Locate usable region >= 2 MiB without mutating Limine's struct
+    for (uint32_t i = 0; i < memmap->entry_count; i++) {
+        struct limine_memmap_entry *e = memmap->entries[i];
+        if (e->type == LIMINE_MEMMAP_USABLE) {
+            uint64_t start = PAGE_ALIGN_UP(e->base);
+            if (start < PMM_MIN_PHYS_ADDR) start = PMM_MIN_PHYS_ADDR;
+
+            if ((e->base + e->length) >= (start + bitmap_size)) {
+                bitmap_phys = start;
+                map = (uint8_t *)(PHYS_TO_VIRT(bitmap_phys));
+                break;
+            }
+        }
+    }
+
+    if (!bitmap_phys) {
+        printf("[PMM Panic] Failed to allocate bitmap above 2MB\n");
+        for (;;) __asm__ volatile("cli; hlt");
+    }
+
+    // 2. Default all frames to USED (0xFF)
+    memset(map, 0xFF, bitmap_size);
+
+    // 3. Mark usable RAM ranges as FREE (0)
+    for (uint32_t i = 0; i < memmap->entry_count; i++) {
+        struct limine_memmap_entry *e = memmap->entries[i];
+        if (e->type == LIMINE_MEMMAP_USABLE) {
+            uint64_t start = PAGE_ALIGN_UP(e->base);
+            uint64_t end   = PAGE_ALIGN_DOWN(e->base + e->length);
+
+            for (uint64_t phys = start; phys < end; phys += PAGE_SIZE) {
+                if (phys >= PMM_MIN_PHYS_ADDR) {
+                    bitmap_clear(phys / PAGE_SIZE);
+                }
+            }
+        }
+    }
+
+    // 4. Reserve the bitmap's own physical frames
+    uint64_t bitmap_start_frame = bitmap_phys / PAGE_SIZE;
+    uint64_t bitmap_frame_count = bitmap_size / PAGE_SIZE;
+    for (uint64_t f = 0; f < bitmap_frame_count; f++) {
+        bitmap_set(bitmap_start_frame + f);
+    }
 }
 
+uintptr_t alloc_page_table(void) {
+    uintptr_t phys_addr = (uintptr_t)pmm_alloc();
+    if (!phys_addr) {
+        printf("[VMM] Failed to allocate physical memory for page table\n");
+        for (;;) __asm__ __volatile__("cli; hlt");
+    }
 
-uint64_t *alloc_page_table() {
-	uint64_t phys_addr = (uint64_t)pmm_alloc();
-	if (!phys_addr) return NULL;
-
-	uint64_t *virt_addr = (uint64_t *)PHYS_TO_VIRT(phys_addr);
-	memset(virt_addr, 0, PAGE_SIZE);
-	return (uint64_t *)phys_addr;
-}
-
-void map_page_wr(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr){
-	map_page(pml4_virt, virt_addr_raw, paddr, PTE_PRESENT | PTE_WRITABLE);
+    uint64_t *virt_addr = (uint64_t *)PHYS_TO_VIRT(phys_addr);
+    memset(virt_addr, 0, PAGE_SIZE);
+    return phys_addr;
 }
 
 ///Map a Virtual address to a Physical Address
-void map_page(pml4_table_t *pml4_virt, uint64_t virt_addr_raw, uint64_t paddr, uint64_t flags) {
-		
-		virtual_address_t vaddr = {._raw = virt_addr_raw};
+void map_page(pml4_table_t *pml4_virt, uint64_t vaddr, uint64_t paddr, uint64_t flags) {
+    virtual_address_t virt = { ._raw = vaddr };
+    
+    uint64_t indices[4] = {
+        virt.pml4_index,
+        virt.pdpt_index,
+        virt.pd_index,
+        virt.pt_index,
+    };
 
-		page_table_entry_t *pml4_entry = &pml4_virt->entries[vaddr.pml4_index]; 
-		if (!pml4_entry->present) {
-			uint64_t *new_table = alloc_page_table();
-			
-			if (new_table == NULL) {
-				printf("KERNEL PANIC: Out of physical memory\n");
-				for(;;) __asm__ __volatile("hlt");
-			}
-			pml4_entry->present = 1;
-			pml4_entry->rw = 1;
-			pml4_entry->us = (flags & PTE_USER) ? 1 : 0;
-			pml4_entry->address = (uint64_t)new_table >> 12;
-		}
-		pdpt_table_t *pdpt = (pdpt_table_t *)(uint64_t)PHYS_TO_VIRT(pml4_entry->address << 12);
-		page_table_entry_t *pdpt_entry = &pdpt->entries[vaddr.pdpt_index];
+    uint64_t *table = (uint64_t *)pml4_virt;
 
-		if (!pdpt_entry->present) {
-			uint64_t *new_table = alloc_page_table();
-			if (new_table == NULL) {
-				printf("KERNEL PANIC: Out of physical memory\n");
-				for(;;) __asm__ __volatile("hlt");
-			}
-			pdpt_entry->present = 1;
-			pdpt_entry->rw = 1;
-			pdpt_entry->us = (flags & PTE_USER) ? 1 : 0;
-			pdpt_entry->address = (uint64_t)new_table >> 12;
-		}
-		pd_table_t *pd = (pd_table_t *)(uint64_t) PHYS_TO_VIRT(pdpt_entry->address << 12);
-		page_table_entry_t *pd_entry = &pd->entries[vaddr.pd_index];
+    for (int level = 0; level < 3; level++) {
+        uint64_t entry = table[indices[level]];
 
-		if (!pd_entry->present) {
-			uint64_t *new_table = alloc_page_table();
-			if (new_table == NULL) {
-				printf("KERNEL PANIC: Out of physical memory\n");
-				for(;;) __asm__ __volatile("hlt");
-			}
-			pd_entry->present = 1;
-			pd_entry->rw = 1;
-			pd_entry->us = (flags & PTE_USER) ? 1 : 0;
-			pd_entry->address = (uint64_t)new_table >> 12;
-		}
+        // If entry missing OR is a Huge Page, allocate a clean child page table
+        if (!(entry & PTE_PRESENT) || (entry & PTE_PSE)) {
+            uintptr_t new_table_phys = alloc_page_table();
+            uint64_t parent_flags = PTE_PRESENT | PTE_WRITABLE;
+            if (flags & PTE_USER) parent_flags |= PTE_USER;
+            
+            table[indices[level]] = new_table_phys | parent_flags;
+            table = (uint64_t *)PHYS_TO_VIRT(new_table_phys);
+        } else {
+            if (flags & PTE_USER) {
+                table[indices[level]] |= PTE_USER;
+            }
+            table = (uint64_t *)PHYS_TO_VIRT(entry & PTE_ADDR_MASK);
+        }
+    }
 
-		pt_table_t *pt = (pt_table_t *)(uint64_t) PHYS_TO_VIRT(pd_entry->address << 12);
-		page_table_entry_t *pt_entry = &pt->entries[vaddr.pt_index];
-		
-		pt_entry->present = 1;
-		pt_entry->rw = 1;
-		pt_entry->us = (flags & PTE_USER) ? 1 : 0;
-		pt_entry->address = paddr >> 12;
+    bool updating_existing = (table[indices[3]] & PTE_PRESENT) != 0;
+    table[indices[3]] = (paddr & PTE_ADDR_MASK) | flags;
 
+    if (updating_existing) {
+        tbl_invalidate(vaddr);
+    }
 }
 ///Map the whole usable ram
 static void map_ram(struct limine_memmap_response *memmap) {
-	for (uint32_t i = 0; i < memmap->entry_count; i++) {
-		struct limine_memmap_entry *e = memmap->entries[i];
-		if (e->type == LIMINE_MEMMAP_RESERVED) continue;
-		uint64_t base = e->base;
-		uint64_t length = e->length;
-		for (uint64_t phys = base; phys < (base + length); phys += PAGE_SIZE) {
-			map_page(kernel_pml4, PHYS_TO_VIRT(phys), phys, PTE_WRITABLE);
-		}
+    for (uint32_t i = 0; i < memmap->entry_count; i++) {
+        struct limine_memmap_entry *e = memmap->entries[i];
+        if (e->type == LIMINE_MEMMAP_BAD_MEMORY) continue;
+
+        uint64_t base = PAGE_ALIGN_DOWN(e->base);
+        uint64_t top = PAGE_ALIGN_UP(e->base + e->length);
+        for (uint64_t phys = base; phys < top; phys += PAGE_SIZE) {
+            map_page(kernel_pml4, PHYS_TO_VIRT(phys), phys, PTE_PRESENT | PTE_WRITABLE);
+        }
+    }
+}
+
+static void map_kernel(uint64_t kpaddr, uint64_t kvaddr, size_t ksize) {
+	for (uint64_t offset = 0; offset < ksize; offset += PAGE_SIZE) {
+		uint64_t paddr = kpaddr + offset;
+		map_page(kernel_pml4, (((uint64_t)kvaddr) + offset), paddr, PTE_PRESENT | PTE_WRITABLE);
 	}
 }
 
-static void map_kernel(uint64_t kpaddr, virtual_address_t *kvaddr, size_t ksize) {
-	for (uint64_t offset = 0; offset < ksize; offset += PAGE_SIZE) {
-		uint64_t paddr = kpaddr + offset;
-		map_page(kernel_pml4, (((uint64_t)kvaddr) + offset), paddr, PTE_WRITABLE);
-	}
-}
 
 pml4_table_t *create_new_pml4(void) {
     uint64_t pml4_phys = (uint64_t)pmm_alloc();
@@ -210,35 +195,23 @@ void init_mem(struct limine_memmap_response *memmap) {
 	//Globally set hhdm offset for further uses
 	hhdm_offset = hhdm_request.response->offset;
 	top_ram = get_highest_phys_addr(memmap);
-	kernel_size = ((uint64_t)&kernel_end - (uint64_t)&kernel_start);
+	kernel_size = PAGE_ALIGN_UP(((uint64_t)&kernel_end - (uint64_t)&kernel_start));
 
 	init_bitmap(memmap);
 
-	uint64_t old_cr3 = get_cr3() & ~(uint64_t)0xFFF;
-	pml4_table_t *old_pml4 = (pml4_table_t *)PHYS_TO_VIRT(old_cr3);
-
 	uint64_t new_pml4_phys = (uint64_t)pmm_alloc();
 	kernel_pml4 = (pml4_table_t *)PHYS_TO_VIRT(new_pml4_phys);
-	
+	memset(kernel_pml4, 0, PAGE_SIZE);
 
-	memcpy(kernel_pml4, old_pml4, PAGE_SIZE);
-	
 	map_ram(memmap);
 
 	uint64_t kernel_paddr = kernel_address_request.response->physical_base;
-	virtual_address_t *kernel_vaddr = (virtual_address_t*)kernel_address_request.response->virtual_base;
+	uint64_t kernel_vaddr = kernel_address_request.response->virtual_base;
+
 	map_kernel(kernel_paddr, kernel_vaddr, kernel_size);
 
-	uint64_t rsp;
-	__asm__ __volatile("mov %%rsp, %0" : "=r"(rsp));
-	if (!(rsp >= hhdm_offset && rsp < (hhdm_offset + top_ram)) && !(rsp >= (uint64_t)kernel_vaddr && rsp < ((uint64_t) kernel_vaddr + kernel_size))){
-		//should map stack
-		printf("STACK NOT MAPPED !");
-		for(;;) {
-			__asm__ __volatile("hlt");
-		}
-	}
-	set_cr3((uint64_t)new_pml4_phys);
+	set_cr3(new_pml4_phys);
+
 	heap_init();
 }
 
@@ -277,27 +250,4 @@ void print_kmemmap(kernel_memmap_t *km) {
 	printf("stack:\t\t%016p\t%016p\n", km->kstack_start, km->kstack_start - km->kstack_size);
 	printf("heap:\t\t%016p\t%016p\n", km->kheap_start, km->kheap_start + km->kheap_size);
 	printf("user stack:\t%016p\t%016p\n", km->ustack_start, km->ustack_start - km->ustack_size);
-}
-
-
-void *map_alloc_phys(size_t size) {
-	uint32_t nb_pg = (size / PAGE_SIZE) + 1;
-	void *raw = pmm_alloc_n(nb_pg);
-	map_page(kernel_pml4, PHYS_TO_VIRT(raw), (uint64_t)raw, PTE_PRESENT | PTE_WRITABLE);
-	return (void *)PHYS_TO_VIRT(raw);
-}
-
-void unmap_alloc_phys(void *ptr, size_t size) {
-	if (ptr == NULL || size == 0) {
-		return;
-	}
-
-	uint32_t nb_pg = (size / PAGE_SIZE) + 1;
-	if (nb_pg > 1) {
-		for (uint32_t i = 0; i < nb_pg; i++) {
-			pmm_free((void *)VIRT_TO_PHYS(ptr + (PAGE_SIZE * i)));
-		}		
-	} else {
-		pmm_free((void *)VIRT_TO_PHYS(ptr));
-	}
 }

@@ -91,7 +91,7 @@ static void acpi_parse_dt(acpi_sdt_header_t *header) {
 
 	char sig[5] = {0};
 
-	strcpy(sig, signature);
+	strncpy(sig, signature, 5);
 	sig[4] = '\0';
 	if (!strncmp(sig, "FACP", 4)) {
 		acpi_parse_facp((acpi_fadt *)header);

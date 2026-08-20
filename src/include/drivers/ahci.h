@@ -17,13 +17,15 @@
 #define AHCI_DEV_SATAPI			4
 #define HBA_PORT_IPM_ACTIVE		1
 #define HBA_PORT_DET_PRESENT	3
-
 #define HBA_PxCMD_ST			0x0001
 #define HBA_PxCMD_FRE			0x0010
 #define HBA_PxCMD_FR			0x4000
 #define HBA_PxCMD_CR			0x8000
 
 #define SECTOR_SIZE				512
+
+#define AHCI_CAP_OFFSET			0x0
+#define AHCI_CAP_S64A			(1U << 31)
 
 /*FIS type*/
 typedef enum {
@@ -259,6 +261,7 @@ typedef struct {
 } __attribute__ ((__packed__, aligned(4096))) ahci_port_mem_t;
 
 void init_ahci();
+int support_64_dma();
 bool ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buf);
 bool ahci_write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buffer);
 int ahci_read_blocks(block_device_t *dev, uint64_t lba, uint32_t count, void* buffer);
@@ -266,5 +269,5 @@ int ahci_write_blocks(block_device_t *dev, uint64_t lba, uint32_t count, const v
 int ahci_get_drv_stat(block_device_t *dev, void *buffer);
 extern void storage_register_ahci_drive(hba_port_t *port);
 uint64_t ahci_get_sector_count(hba_port_t *port);
-
+void *ahci_alloc_dma_buffer(size_t size, uintptr_t *out_phys_addr);
 #endif

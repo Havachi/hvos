@@ -117,15 +117,13 @@ static ssize_t ramfs_write(file_t *filp, const char *buf, size_t size, uint64_t 
 
 
 void ramfs_init() {
-	inode_t *root_inode = kmalloc(sizeof(inode_t));
-	memset(root_inode, 0, sizeof(inode_t));
+	inode_t *root_inode = kzalloc(sizeof(inode_t));
 	root_inode->i_ino = 2;
 	root_inode->i_mode = S_IFDIR;
 	root_inode->i_op = &ramfs_iops;
 	root_inode->i_fop = &ramfs_fops;
 
-	ramfs_dir_data_t *ddata = kmalloc(sizeof(ramfs_dir_data_t));
-	memset(ddata, 0, sizeof(ramfs_dir_data_t));
+	ramfs_dir_data_t *ddata = kzalloc(sizeof(ramfs_dir_data_t));
 	root_inode->i_private = ddata;
 
 	root_dentry = vfs_alloc_dentry("/", root_inode, NULL);

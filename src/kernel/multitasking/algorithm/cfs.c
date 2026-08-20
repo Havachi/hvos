@@ -14,6 +14,8 @@ static thread_t * get_lowest_runtime() {
 	thread_t *next = NULL;
 	for (uint64_t i = 0; i < thread_list->count; i++) {
 		thread_t *t = list_get_at(thread_list, i);
+		if (!t || (uintptr_t)t < KERNEL_HEAP_START)
+			continue;
 		if (t->state == STATE_READY) {
 			if (next == NULL) {
 				next = t;

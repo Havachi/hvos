@@ -29,10 +29,22 @@ void *list_get_at(list_t *list, unsigned long at) {
 	return node != NULL ? ((node->data == NULL) ? NULL : node->data) : NULL;
 }
 
+static int list_node_looks_valid(const list_node_t *node) {
+	uintptr_t addr = (uintptr_t)node;
+	if (!node)
+		return 0;
+	if (addr < KERNEL_HEAP_START)
+		return 0;
+	return 1;
+}
+
 list_node_t *list_get_node_at(list_t *list, unsigned long at) {
-	if (at >= list->count ) return NULL;
+	if (!list || at >= list->count)
+		return NULL;
 	list_node_t *current = list->head;
-	for(unsigned long i = 1; i <= at && current != NULL; i++) {
+	for (unsigned long i = 1; i <= at && current != NULL; i++) {
+		if (!list_node_looks_valid(current->next))
+			return NULL;
 		current = current->next;
 	}
 	return current;
@@ -44,8 +56,8 @@ void list_append(list_t *list, void *data) {
 	if (!node)
 		return;
 	if (list->count) {
-		list_node_t *last = list_get_at(list, list->count-1);
-		last->next = new_node(data, NULL);
+		list_node_t *last = list_get_node_at(list, list->count - 1);
+		last->next = node;
 	} else {
 		list->head = node;
 	}
@@ -55,6 +67,8 @@ void list_append(list_t *list, void *data) {
 void list_push(list_t *list, void *data) {
 	list_node_t **head = &list->head;
 	list_node_t *new = new_node(data, *head);
+	if (!new)
+		return;
 	*head = new;
 	list->count++;
 }
@@ -87,7 +101,7 @@ void list_remove_at(list_t *list, unsigned long at) {
 	current->next = temp->next;
 	if (temp->data != NULL)
 		kfree(temp->data);
-	kfree(temp->data);
+	kfree(temp);
 	list->count--;
 }
 

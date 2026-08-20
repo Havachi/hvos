@@ -29,7 +29,7 @@ thread_t *find_idle_thread(list_t *thread_list) {
 	list_node_t *curr = thread_list->head;
 	while(curr != NULL) {
 		thread_t *t = (thread_t *)curr->data;
-		if (strcmp(t->name, "IDLE_THREAD") == 0) {
+		if (t && strcmp(t->name, "IDLE_THREAD") == 0) {
 			return t;
 		}
 		curr = curr->next;
@@ -103,6 +103,8 @@ uint64_t schedule(uint64_t old_rsp, uint64_t from) {
 			return old_rsp;
 		}
 		next_thread = find_idle_thread(cpu_list->thread_list);
+		if (next_thread == NULL)
+			return old_rsp;
 	}
 	if (current_thread == next_thread) {
 		current_thread->state = STATE_RUNNING;
@@ -119,13 +121,14 @@ uint64_t schedule(uint64_t old_rsp, uint64_t from) {
 
 	cpu_data->stack_top = (uint64_t)next_thread->kernel_stack_base;
 
-
-	pml4_table_t *current_pml4 = (pml4_table_t *)PHYS_TO_VIRT(current_thread->process->cr3);
-	pml4_table_t *next_pml4 = (pml4_table_t *)PHYS_TO_VIRT(next_thread->process->cr3);
-	for (int i = 256; i < 512; i++) {
-    	next_pml4->entries[i] = current_pml4->entries[i];
+	uint64_t kernel_cr3 = VIRT_TO_PHYS(kernel_pml4);
+	if (next_thread->process->cr3 != kernel_cr3) {
+		pml4_table_t *next_pml4 = (pml4_table_t *)PHYS_TO_VIRT(next_thread->process->cr3);
+		for (int i = 256; i < 512; i++) {
+			next_pml4->entries[i] = kernel_pml4->entries[i];
+		}
 	}
-	
+
 	if (current_thread->process->cr3 != next_thread->process->cr3) {
 		__asm__ __volatile__("movq %0, %%cr3" :: "r"(next_thread->process->cr3): "memory");
 	}
@@ -173,7 +176,7 @@ void notify_wait_channel(void *channel) {
 void update_sleeping_queue() {
 	cpu_task_list_t *cpu = get_cpu_task_list();
 	delta_queue_entry_t *top = NULL;
-	if (cpu->sleeping_queue->count == 0)
+	if (!cpu->sleeping_queue || cpu->sleeping_queue->count == 0)
 		return;
 	top = list_get_at(cpu->sleeping_queue, 0);
 	if (top == NULL) {
@@ -182,9 +185,8 @@ void update_sleeping_queue() {
 	if (top->delta == 0){
 		for (uint64_t i = 0; i < cpu->thread_list->count; i++) {
 			thread_t *t = list_get_at(cpu->thread_list, i);
-			if (t->tid == top->tid) {
+			if (t && t->tid == top->tid) {
 				t->state = STATE_READY;
-
 			}
 		}
 		list_pop(cpu->sleeping_queue);

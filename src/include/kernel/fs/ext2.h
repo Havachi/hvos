@@ -19,6 +19,7 @@
 #define LOG_BLOCK_SIZE 0
 #define EXT2_NAME_LEN 255
 #define EXT2_RESERVED_INODES 10
+#define MAX_PATH_DEPTH 255
 
 #define C_BLKSZ(s_log_block_size) (1024 << s_log_block_size)
 
@@ -39,6 +40,13 @@
 #define EXT2_ACL_DATA_INO 4
 #define EXT2_BOOT_LOADER_INO 5
 #define EXT2_UNDEL_DIR_INO 6
+
+#define EXT2_DIRECT_BLOCKS 12
+#define EXT2_NDIR_BLOCKS 12
+#define EXT2_IND_BLOCK 12
+#define EXT2_DIND_BLOCK 13
+#define EXT2_TIND_BLOCK 14
+#define S_IFMT 0xF000
 
 //Return 1 if the version of ext2 is high enough for the sb to have extended fields
 #define ISSBEXT(sb) (sb->base.v_major >= 1) ? 1 : 0;
@@ -178,7 +186,15 @@ typedef struct {
 typedef struct {
 	block_device_t 	*dev;
 	ext2_sb_t		*sb;
-	ext2_bgd_t		*bgd;
+	ext2_bgd_t		*bgdt;
+	uint32_t		block_size;
+	uint32_t		block_count;
+	uint32_t		inodes_per_block;
+	uint32_t		pointer_per_block;
+	uint32_t		bgdt_blocks;
+	uint32_t		group_count;
+	bool			sb_dirty;
+	bool			bgdt_dirty;
 } ext2_fs_t;
 
 //Ext2 inode
@@ -367,41 +383,61 @@ enum {
 };
 
 
-
-
-
-
 /*bgdt.c*/
-int mkfs_ext2_bgdt_init(block_device_t *dev, ext2_sb_t *sb);
-ext2_bgd_t *ext2_read_bgdt_entry(block_device_t *dev, ext2_sb_t *sb, uint32_t bg_id);
-int ext2_write_bgdt_entry(block_device_t *dev, ext2_sb_t *sb, uint32_t bg_id, ext2_bgd_t *entry);
-
+int ext2_bgdt_read_entry(ext2_fs_t *fs, uint32_t bg_id, ext2_bgd_t *out);
+int ext2_bgdt_read_entry_raw(block_device_t *dev, uint32_t bg_id, ext2_bgd_t *out);
+int ext2_bgdt_write_entry(ext2_fs_t *fs, uint32_t bg_id, const ext2_bgd_t *entry);
+int mkfs_ext2_bgdt_init(block_device_t *dev, ext2_sb_t *sb, ext2_bgd_t *grp0_bgd);
+int blkgrp_has_super(uint32_t group);
+int ext2_bgdt_sync(ext2_fs_t *fs);
+/* blk_io.c */
+int ext2_read_block(ext2_fs_t *fs, uint32_t blk_id, uint8_t *buf);
+int ext2_read_blocks(block_device_t *dev, uint32_t blk_start, uint32_t blk_end, uint8_t *buf);
+int ext2_read_block_ptr(ext2_fs_t *fs, uint32_t pblk, uint32_t *buf);
+int ext2_write_block(ext2_fs_t *fs, uint32_t blk_id, const uint8_t *buf);
+int ext2_write_blocks(block_device_t *dev, uint32_t blk_start, uint32_t blk_end, const uint8_t *buf);
+int ext2_write_block_ptr(ext2_fs_t *fs, uint32_t pblk, const uint32_t *buf);
+int ext2_alloc_block(ext2_fs_t *fs, uint32_t group_hint, uint32_t *out_blk_id);
+int ext2_free_block(ext2_fs_t *fs, uint32_t pblk);
 /*dir.c*/
-ext2_dir_t *ext2_get_dir(block_device_t *dev, ext2_sb_t *sb, ino_t inode_number, char *name);
+int ext2_dir_find_entry(ext2_fs_t *fs, const ext2_ine_t *dir_inode, const char *name, ino_t *out_ino);
+int ext2_dir_add_entry(ext2_fs_t *fs, ino_t dir_ino, const char *name, ino_t ino_id, uint8_t file_type);
+int ext2_dir_remove_entry(ext2_fs_t *fs, ino_t dir_ino, const char *name);
+int ext2_dir_readdir(ext2_fs_t *fs, const ext2_ine_t *dir_inode, uint32_t *offset, ext2_dir_t *out_entry);
 
 /*ext2.c*/
-int blkgrp_has_super(uint32_t group);
-uint32_t mkfs_ext2(block_device_t *blkdev);
+int mkfs_ext2(block_device_t *dev);
 bitmap_t *ext2_read_bitmap(block_device_t *dev, uint32_t loc, uint32_t total_bits);
 uint32_t ext2_write_bitmap(block_device_t *dev, uint32_t loc, uint32_t total_bits, bitmap_t *map);
+int ext2_mount(block_device_t *dev, ext2_fs_t **out_fs);
+int ext2_unmount(ext2_fs_t *fs);
+int ext2_sync(ext2_fs_t *fs);
+int ext2_lookup_path(ext2_fs_t *fs, const char *path, ino_t cwd_ino, ino_t *out_ino);
+int ext2_bmap(ext2_fs_t *fs, ext2_ine_t *inode, uint32_t lblk, int create_if_missing, uint32_t *out_pblk);
 
 /*ino.c*/
-ext2_ine_t *ext2_get_inode_table(block_device_t *dev, ext2_sb_t *sb, ext2_bgd_t *bgd);
-ext2_ine_t *ext2_read_inode(block_device_t *dev, ext2_sb_t *sb, ino_t inode_id);
-int  ext2_write_inode(block_device_t *dev, ext2_sb_t *sb, ino_t inode_id, ext2_ine_t *inode);
-
+int ext2_inode_read(ext2_fs_t *fs, ino_t ino_id, ext2_ine_t *out);
+int ext2_inode_write(ext2_fs_t *fs, ino_t ino_id, const ext2_ine_t *inode);
+int ext2_inode_alloc(ext2_fs_t *fs, uint32_t group_hint, uint16_t mode, ino_t *out_ino_id);
+int ext2_inode_free(ext2_fs_t *fs, ino_t ino_id);
+int ext2_free_inode_blocks(ext2_fs_t *fs, ext2_ine_t *inode);
 /*sb.c*/
-ext2_sb_t *ext2_read_sb(block_device_t *dev);
-int ext2_write_sb(block_device_t *dev, const ext2_sb_t *sb);
-int ext2_write_backup_sb(block_device_t *dev, const ext2_sb_t *sb);
-int ext2_update_sb(block_device_t *dev, const ext2_sb_t *sb);
+int ext2_sb_read(ext2_fs_t *fs, ext2_sb_t *out_sb);
+int ext2_sb_read_raw(block_device_t *dev, ext2_sb_t *out_sb);
+int ext2_sb_write(ext2_fs_t *fs, const ext2_sb_t *sb);
+int ext2_sb_write_raw(block_device_t *dev, const ext2_sb_t *sb);
+int ext2_sb_sync(ext2_fs_t *fs);
 
+int ext2_update_sb(ext2_fs_t *fs, const ext2_sb_t *sb);
+int ext2_update_sb_raw(block_device_t *dev, const ext2_sb_t *sb);
 /*VFS API*/
+
 
 //Return codes
 #define OPERATION_SUCCESS 0
 #define OPERATION_FAILED 1
-#define IO_ERROR 5
+#define IO_ERROR 4
+#define DEVICE_READ_ERROR 5
 #define DEVICE_WRITE_ERROR 6
 #define DEVICE_NEED_REFORMAT 7
 #define DEVICE_UNAVAILABLE 8

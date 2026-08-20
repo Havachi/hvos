@@ -28,7 +28,7 @@ static void push_thread(thread_t *list, thread_t *new) {
 }
 
 thread_t *new_thread() {
-	thread_t *t = kmalloc(sizeof(thread_t));
+	thread_t *t = kzalloc(sizeof(thread_t));
 	if (!t) {
 		return NULL;
 	}

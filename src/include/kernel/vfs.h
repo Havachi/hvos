@@ -123,10 +123,6 @@ extern dentry_t *root_dentry;
 
 extern volatile struct limine_module_request module_request;
 
-typedef struct vfs_fs_ops {
-	int (*mount)()
-} vfs_fs_ops_t;
-
 
 void vfs_init(void);
 

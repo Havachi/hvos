@@ -23,11 +23,13 @@ typedef struct {
 
 
 typedef struct {
-	union {
-		uint32_t p:1,w:1,u:1,r:1,i:1,pk:1,ss:1,reserved:8,sgx:1,reserved2:15;
-		uint32_t _raw;
-	};
-} pagefault_error_code_t;
+	uint32_t present : 1;
+	uint32_t write : 1;
+	uint32_t user : 1;
+	uint32_t reserved : 1;
+	uint32_t execute : 1;
+} __packed pf_error_code_t ;
+
 
 typedef struct {
     // manually pushed (in push order, so reversed in memory)

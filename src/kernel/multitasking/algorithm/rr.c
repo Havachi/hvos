@@ -22,6 +22,8 @@ thread_t *get_next_thread_rr() {
 		if (next_id >= thread_list->count) next_id = 0;
 		
 		thread_t *candidate = (thread_t *)(list_get_at(thread_list, next_id++));
+		if (!candidate)
+			continue;
 		if (strcmp(candidate->name, "IDLE_THREAD") == 0) {
 			continue;
 		}

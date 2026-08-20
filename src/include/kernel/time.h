@@ -20,5 +20,5 @@ datetime_t *now();
 timestamp_t dttots(datetime_t *dt);
 
 void init_rtc();
-
+time_t time( time_t *arg );
 #endif

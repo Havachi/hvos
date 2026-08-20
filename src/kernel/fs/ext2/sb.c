@@ -1,6 +1,7 @@
 #include "kernel/fs/ext2.h"
 #include "kernel/fs/storage.h"
 #include "mem/mem.h"
+#include <errno-list.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,30 +15,54 @@
 		- signature doesn't match ext2 signature
 */
 
-ext2_sb_t *ext2_read_sb(block_device_t *dev) {
-	ext2_sb_t *sb = NULL;
-	uint8_t blkbuf[dev->block_size];
+int ext2_sb_read(ext2_fs_t *fs, ext2_sb_t *out_sb) {
+	if (!fs || !out_sb) return -EINVAL;
+	if (!fs->dev || !fs->dev->ops || !fs->dev->ops->read_blocks) return -EINVAL;
+	uint8_t blkbuf[fs->block_size];
+	uint32_t sb_lba = (fs->block_size > 1024) ? 0 : 1;
+	int err = ext2_read_block(fs, sb_lba, blkbuf);
+	if (err < 0) return err;
+	memcpy(out_sb, blkbuf, sizeof(ext2_sb_t));
+	return OPERATION_SUCCESS;
+}
 
-	if (dev == NULL || dev->ops == NULL || dev->ops->read_blocks == NULL)
-		return NULL;
+int ext2_sb_read_raw(block_device_t *dev, ext2_sb_t *out_sb) {
+	if (!out_sb || !dev) return -EINVAL;
+	if (!dev->ops || !dev->ops->read_blocks) return -DEVICE_UNAVAILABLE;
 
-	
+	uint8_t *blkbuf = kzalloc(dev->block_size);
 	uint32_t sb_lba = (dev->block_size > 1024) ? 0 : 1;
 	if (dev->ops->read_blocks(dev, sb_lba, 1, blkbuf) != 0) {
 		printf("Failed reading superblock from disk %s", dev->name);
-		return NULL;
+		return -DEVICE_READ_ERROR;
 	}
-
-	sb = kzalloc(sizeof(ext2_sb_t));
-	memcpy(sb, blkbuf, sizeof(ext2_sb_t));
-	return (sb);
+	memcpy(out_sb, blkbuf, sizeof(ext2_sb_t));
+	kfree(blkbuf);
+	return OPERATION_SUCCESS;
 }
 
-int ext2_write_sb(block_device_t *dev, const ext2_sb_t *sb){
-	uint8_t blkbuf[dev->block_size];
+int ext2_sb_write(ext2_fs_t *fs, const ext2_sb_t *sb){
+	if (!fs || !sb) return -EINVAL;
+
+	if (!fs->dev|| !fs->dev->ops || !fs->dev->ops->write_blocks)
+		return -DEVICE_UNAVAILABLE;
+
+	uint8_t blkbuf[fs->block_size];
+	uint32_t sb_lba = (fs->block_size > 1024) ? 0 : 1;
+
+	memcpy(blkbuf, sb, fs->block_size);
+	int err = ext2_write_block(fs, sb_lba, blkbuf);
+	if (err < 0) return err;
+	return OPERATION_SUCCESS;
+}
+
+
+int ext2_sb_write_raw(block_device_t *dev, const ext2_sb_t *sb){
+	if (!dev || !sb) return -EINVAL;
 	if (dev == NULL || dev->ops == NULL || dev->ops->write_blocks == NULL)
 		return -DEVICE_UNAVAILABLE;
 
+	uint8_t blkbuf[dev->block_size];
 	uint32_t sb_lba = (dev->block_size > 1024) ? 0 : 1;
 	if ((uint32_t)C_BLKSZ(sb->base.s_log_block_size) != dev->block_size)
 		return -DEVICE_NEED_REFORMAT;
@@ -46,11 +71,11 @@ int ext2_write_sb(block_device_t *dev, const ext2_sb_t *sb){
 	if (dev->ops->write_blocks(dev, sb_lba, 1, blkbuf) != 0) {
 		return -DEVICE_WRITE_ERROR;
 	}
-	return 0;
+	return OPERATION_SUCCESS;
 }
 
 
-int ext2_write_backup_sb(block_device_t *dev, const ext2_sb_t *sb) {
+static int ext2_write_backup_sb(block_device_t *dev, const ext2_sb_t *sb) {
 	if (dev == NULL || dev->ops == NULL || dev->ops->write_blocks == NULL)
 		return -DEVICE_UNAVAILABLE;
 
@@ -72,10 +97,22 @@ int ext2_write_backup_sb(block_device_t *dev, const ext2_sb_t *sb) {
 	return OPERATION_SUCCESS;
 }
 
-int ext2_update_sb(block_device_t *dev, const ext2_sb_t *sb) {
-	if (ext2_write_sb(dev, sb) != 0)
+int ext2_update_sb(ext2_fs_t *fs, const ext2_sb_t *sb) {
+	if (ext2_sb_write(fs, sb) != 0)
+		return -OPERATION_FAILED;
+	if (ext2_write_backup_sb(fs->dev, sb))
+		return -OPERATION_FAILED;
+	return OPERATION_SUCCESS;
+}
+
+int ext2_update_sb_raw(block_device_t *dev, const ext2_sb_t *sb) {
+	if (ext2_sb_write_raw(dev, sb) < 0)
 		return -OPERATION_FAILED;
 	if (ext2_write_backup_sb(dev, sb))
 		return -OPERATION_FAILED;
 	return OPERATION_SUCCESS;
+}
+
+int ext2_sb_sync(ext2_fs_t *fs) {
+	
 }

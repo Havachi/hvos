@@ -1,4 +1,5 @@
 #include "mem/mem.h"
+#include <stdio.h>
 
 #ifdef BIG_BITMAP
 uint32_t *bitmap;
@@ -26,7 +27,7 @@ void bitmap_clear(uint64_t page_index) {
 }
 
 int32_t bitmap_test(uint64_t page_index) {
-	return (map[(page_index / 8)] & (1 << (page_index % 8)));
+	return (map[page_index / 8] & (1U << (page_index % 8))) != 0;
 }
 #endif
 
